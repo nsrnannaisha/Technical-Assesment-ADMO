@@ -18,14 +18,6 @@ public class Order {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    public enum OrderStatus {
-        CREATED,
-        PAID,
-        SHIPPED,
-        DELIVERED,
-        CANCELLED
-    }
-
     public Order(String customerName, List<LineItem> items) {
         this.orderId = UUID.randomUUID();
         this.customerName = customerName;
