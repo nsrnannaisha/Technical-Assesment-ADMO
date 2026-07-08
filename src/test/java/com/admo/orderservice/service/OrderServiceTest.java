@@ -3,9 +3,9 @@ package com.admo.orderservice.service;
 import com.admo.orderservice.entity.LineItem;
 import com.admo.orderservice.entity.Order;
 import com.admo.orderservice.repository.OrderRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -22,7 +22,7 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        repository = Mockito.mock(OrderRepository.class);
+        repository = mock(OrderRepository.class);
         service = new OrderServiceImpl(repository);
         order = new Order("Ais", List.of(new LineItem("Apple", 2, new BigDecimal("10.000"))));
     }
