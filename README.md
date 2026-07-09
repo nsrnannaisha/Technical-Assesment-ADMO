@@ -1,8 +1,8 @@
 # Technical Test – Nisrina Annaisha Sarnadi
-### Backend Engineer Intern – PT Astra Digital Mobil
+### Backend Engineer Intern at PT Astra Digital Mobil
 
 # Order Service
-A backend service for a simple e-commerce shop: create orders, manage lifecycle.
+A backend service for a simple e-commerce shop to manage orders.
 
 ## Versions
 
@@ -34,7 +34,7 @@ The service starts on `http://localhost:8080`.
 ```bash
 ./gradlew test
 ```
-This runs the full suite in a single command: controller tests (`@WebMvcTest`), repository tests (`@DataJpaTest`), and pure unit tests for the entity/service layers (no Spring context). All tests use H2 in-memory, so no external setup is needed.
+This runs the full suite in a single command. All tests use H2 in-memory,  no external setup is needed.
 
 ## Exercising the API
 
@@ -54,13 +54,14 @@ curl -X POST http://localhost:8080/orders \
 ```
 Returns `201 Created` with a server-assigned `orderId`, `status: "CREATED"`, and a computed `totalAmount` of `17000`.
 
-### Read a single order
+### Read Order
+#### Single order
 ```bash
 curl http://localhost:8080/orders/{id}
 ```
 Returns `404 Not Found` with a structured error body if the id doesn't exist.
 
-### List orders (paginated, sortable)
+#### Multiple orders (paginated, sortable)
 ```bash
 curl "http://localhost:8080/orders?page=0&size=20&sort=newest"
 ```
@@ -78,7 +79,7 @@ curl -X PUT http://localhost:8080/orders/{id} \
   -d '{
     "customerName": "Andi W.",
     "items": [
-      { "productName": "Apple", "quantity": 5, "unitPrice": 0.50 }
+      { "productName": "Apple", "quantity": 5, "unitPrice": 5000 }
     ]
   }'
 ```
@@ -90,7 +91,8 @@ curl -X PUT http://localhost:8080/orders/{id} \
 curl -X PATCH http://localhost:8080/orders/{id}/status \
   -H "Content-Type: application/json" \
   -d '{ "status": "PAID" }'
-
+```
+```bash
 curl -X PATCH http://localhost:8080/orders/{id}/status \
   -H "Content-Type: application/json" \
   -d '{ "status": "CANCELLED", "reason": "Customer changed their mind" }'
@@ -102,7 +104,7 @@ curl -X PATCH http://localhost:8080/orders/{id}/status \
 ```bash
 curl -X DELETE http://localhost:8080/orders/{id}
 ```
-Returns `204 No Content`, or `404` if the order doesn't exist.
+Returns `204 No Content` or `404` if the order doesn't exist.
 
 ### Error response format
 All errors share a consistent shape:
@@ -118,53 +120,60 @@ All errors share a consistent shape:
 ```
 `details` is omitted (`null`) for errors that aren't field-level, e.g. `ORDER_NOT_FOUND` or `ILLEGAL_STATUS_TRANSITION`.
 
-| Code | HTTP status | When |
-|---|---|---|
-| `VALIDATION_ERROR` | 400 | Bean Validation failure on request body |
-| `INVALID_PARAMETER` | 400 | Path/query param has the wrong type (e.g. non-UUID id) |
-| `MALFORMED_REQUEST` | 400 | Request body isn't valid JSON |
-| `MISSING_TRANSITION_DATA` | 400 | A status transition is missing required data (e.g. cancel without reason) |
-| `INVALID_SORT_KEY` | 400 | Unknown value for the `sort` query param |
-| `ORDER_NOT_FOUND` | 404 | No order with the given id |
-| `ILLEGAL_STATUS_TRANSITION` | 409 | Requested status change isn't allowed from the current state |
-| `ITEMS_IMMUTABLE` | 409 | Attempt to modify line items after the order has been paid |
-| `INTERNAL_ERROR` | 500 | Unexpected server error (message is generic; no internals leaked) |
+| HTTP Status | Code ->  When                                                                               |
+|-------------|---------------------------------------------------------------------------------------------|
+| 400         | `VALIDATION_ERROR` -> Bean Validation failure on request body                               |
+| 400         | `INVALID_PARAMETER` -> Path/query parameter has the wrong type (e.g. non-UUID id)           |
+| 400         | `MALFORMED_REQUEST` -> Request body isn't valid JSON                                        |
+| 400         | `MISSING_TRANSITION_DATA` -> A status transition is missing required data                   |
+| 400         | `INVALID_SORT_KEY` -> Unknown value for the `sort` query parameter                          |
+| 404         | `ORDER_NOT_FOUND` -> No order with the given ID                                             |
+| 409         | `ILLEGAL_STATUS_TRANSITION` -> Requested status change isn't allowed from the current state |
+| 409         | `ITEMS_IMMUTABLE` -> Attempt to modify line items after the order has been paid             |
+| 500         | `INTERNAL_ERROR` -> Unexpected server error (generic message; no internal details leaked)   |
 
 ### Assumptions
-- **`totalAmount` is server-computed** (`Σ quantity × unitPrice`), not client-supplied — removes "total doesn't match line items" as a possible input state entirely.
-- **`orderId`, `status`, `totalAmount` can't be set by the client** — they simply aren't fields on the request DTOs, so there's nothing to strip or block.
-- **`customerName` stays editable at any status**; only line items become immutable after payment, per spec.
-- **Persistence is in-memory (H2)** — survives across requests, not across an app restart. Satisfies the literal requirement; see improvements below.
-- **Amounts aren't rounded** — `BigDecimal` throughout, validated to ≤2 decimal places on input, to avoid compounding rounding errors.
-- **Delete is a hard delete** — no soft-delete/archive flag.
-- **Limits** (qty ≤ 10,000, ≤100 items/order, names ≤255 chars) are reasonable guardrails, left to my discretion per spec.
+- `customerName` stays editable at any status; only line items become immutable after payment.
+- Currency is Indonesian Rupiah (IDR), implicitly. No currency field is stored or accepted, since the spec's reference payloads never include one. Because IDR has no commonly used fractional denomination, `unitPrice` is validated as a whole number rather than the ≤2-decimal rule typical for currencies like USD.
+- Amounts aren't rounded. `BigDecimal` throughout.
+- Delete is a hard delete.
+- Limits are reasonable guardrails.
+
 ### Scope omitted
 No auth, no containerization, no optimistic locking (`@Version`) 
- 
+
 ### How Part 2 shaped Part 1
-Reading Part 2 first led to two structural choices up front instead of rework later:
-1. **State pattern for status transitions** — each `OrderStatus` has an `OrderState` implementation owning both legal transitions (`canTransitionTo`) and per-transition data requirements (`validateTransitionData`, e.g. `CancelledState` requires a `reason`). Since Part 2 says transition-data rules "will continue to be added," a new rule is a one-line override in one class, touching nothing else.
-2. **Strategy-style enum for sorting** — `OrderSortKey` gives each ordering rule its own `comparator()`. A new rule is a new enum constant; existing rules are untouched.
-Because of this, Part 2's actual requirements added no changes to `Order`/`OrderService` method signatures, and extended rather than rewrote existing tests.
- 
-### Optional extensions
+After reading Part 2, I made a few design decisions early so I wouldn't need to refactor much later.
+
+1. **State pattern for status transitions**  
+   I used the State pattern so each `OrderStatus` has its own `OrderState` class to handle transition rules and any required validation. This makes it easy to add new transition rules without changing existing code.
+
+2. **Strategy-style enum for sorting**  
+   I used the `OrderSortKey` enum to keep each sorting rule in one place. Adding a new sort option only requires adding another enum constant, without changing the service or controller.
+
+Because of these choices, implementing Part 2 only required adding new behavior instead of changing the existing `Order` and `OrderService` APIs or rewriting tests.
+
+### Optional Assessments
  
 **Architecture**
 
-The State pattern (`OrderState`/subclasses/`OrderStateFactory`) and Strategy pattern (`OrderSortKey` enum) above, chosen specifically because Part 2 says both transition rules and ordering rules will keep growing.
- 
-**Robustness** - explicitly rejected and tested:
-- Empty item list
-- Negative/zero/non-integer quantity
-- Quantity over limit
-- Negative price / price with >2 decimals
-- Blank or overlong names
-- Too many items
-- Illegal status transitions (ship-before-pay, reactivate-after-delivery, cancel-after-ship)
-- Cancel without reason
-- Item changes after payment 
-- Unknown order id, on every endpoint
- 
+I implemented the State pattern (OrderState and its subclasses) to handle order status transitions, and the Strategy pattern (OrderSortKey) to handle sorting. 
+I chose these patterns because both the status rules and sorting options are expected to grow over time, making it easy to add new behavior without changing existing code.
+
+**Robustness** 
+
+I implemented these validation and business-rule boundaries to improve the application's robustness, along with comprehensive tests. The enforced boundaries are users cannot:
+
+- Submit an order with an empty item list.
+- Specify negative, zero, non-integer, or over-limit quantities.
+- Specify negative prices or prices with more than two decimal places.
+- Provide blank or overlong customer or product names.
+- Submit more than the maximum allowed number of line items.
+- Perform illegal status transitions (e.g. ship before payment, reactivate after delivery, or cancel after shipment).
+- Cancel an order without providing a cancellation reason.
+- Modify line items after an order has been paid.
+- Access, update, delete, or change the status of a non-existent order.
+
 ### What I'd improve given more time
-- Move off in-memory H2 to a persistent/containerized DB, plus a `Dockerfile`.
-- **Soft-delete orders** instead of hard-deleting them, for audit-trail purposes appropriate to an e-commerce order history.
+- Containerize the application with a `Dockerfile` and Docker Compose for  deployment.
+- Replace the current in-memory H2 database with a persistent database.
