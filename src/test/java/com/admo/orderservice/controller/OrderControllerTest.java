@@ -31,18 +31,16 @@ class OrderControllerTest {
     @MockitoBean
     private OrderService orderService;
 
+    private Order dummyOrder() {
+        return new Order("Ais", List.of(new LineItem("Apple", 2, new BigDecimal("10000"))));
+    }
+
     @Nested
     class CreateOrder {
 
         @Test
         void shouldCreateOrder() throws Exception {
-
-            Order order = new Order("Ais", List.of(
-                    new LineItem("Apple", 2, new BigDecimal("10000"))
-                    )
-            );
-
-            when(orderService.create(any(Order.class))).thenReturn(order);
+            when(orderService.create(any(Order.class))).thenReturn(dummyOrder());
 
             String request = """
             {
@@ -67,11 +65,7 @@ class OrderControllerTest {
 
         @Test
         void shouldReturnOrder() throws Exception {
-            Order order = new Order("Ais", List.of(
-                    new LineItem("Apple", 2, new BigDecimal("10000"))
-                    )
-            );
-
+            Order order = dummyOrder();
             when(orderService.getById(order.getOrderId())).thenReturn(Optional.of(order));
             mockMvc.perform(get("/orders/{id}", order.getOrderId())).andExpect(status().isOk());
         }
@@ -94,12 +88,7 @@ class OrderControllerTest {
 
         @Test
         void shouldReturnOrders() throws Exception {
-            Order order = new Order("Ais", List.of(
-                    new LineItem("Apple", 2, new BigDecimal("10000"))
-                    )
-            );
-
-            when(orderService.getAll()).thenReturn(List.of(order));
+            when(orderService.getAll()).thenReturn(List.of(dummyOrder()));
             mockMvc.perform(get("/orders")) .andExpect(status().isOk());
         }
 
@@ -115,15 +104,8 @@ class OrderControllerTest {
 
         @Test
         void shouldUpdateOrder() throws Exception {
-
             UUID id = UUID.randomUUID();
-
-            Order order = new Order("Updated", List.of(
-                    new LineItem("Apple", 2, new BigDecimal("10000"))
-                    )
-            );
-
-            when(orderService.update(eq(id), any(Order.class))).thenReturn(Optional.of(order));
+            when(orderService.update(eq(id), any(Order.class))).thenReturn(Optional.of(dummyOrder()));
 
             String request = """
             {
