@@ -42,14 +42,9 @@ public final class OrderMapper {
         );
     }
 
-    private static List<LineItem> toLineItems(List<LineItemRequest> requests) {
-
+    public static List<LineItem> toLineItems(List<LineItemRequest> requests) {
         return requests.stream()
-                .map(item -> new LineItem(
-                        item.getProductName(),
-                        item.getQuantity(),
-                        item.getUnitPrice()
-                ))
+                .map(item -> new LineItem(item.getProductName(), item.getQuantity(), item.getUnitPrice()))
                 .toList();
     }
 }

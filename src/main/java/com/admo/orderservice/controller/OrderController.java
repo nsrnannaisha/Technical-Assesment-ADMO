@@ -62,16 +62,16 @@ public class OrderController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateOrderRequest request) {
 
-        Optional<Order> updated =
-                service.update(id, OrderMapper.toEntity(request));
-
-        if (updated.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.ok(
-                OrderMapper.toResponse(updated.get())
+        Optional<Order> updated = service.update(
+                id,
+                request.getCustomerName(),
+                OrderMapper.toLineItems(request.getItems())
         );
+
+        return updated
+                .map(OrderMapper::toResponse)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

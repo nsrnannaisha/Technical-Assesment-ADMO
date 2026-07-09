@@ -58,4 +58,11 @@ public class Order {
                 .map(LineItem::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
+
+    public void applyUpdate(String customerName, List<LineItem> items) {
+        this.customerName = customerName;
+        this.items = items;
+        this.totalAmount = calculateTotalAmount();
+        this.updatedAt = LocalDateTime.now();
+    }
 }
