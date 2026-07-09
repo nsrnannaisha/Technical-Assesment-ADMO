@@ -10,4 +10,8 @@ class OrderServiceApplicationTests {
     void contextLoads() {
     }
 
+    @Test
+    void mainRuns() {
+        OrderServiceApplication.main(new String[]{});
+    }
 }

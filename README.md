@@ -177,3 +177,4 @@ I implemented these validation and business-rule boundaries to improve the appli
 ### What I'd improve given more time
 - Containerize the application with a `Dockerfile` and Docker Compose for  deployment.
 - Replace the current in-memory H2 database with a persistent database.
+- Improve test coverage & edge cases

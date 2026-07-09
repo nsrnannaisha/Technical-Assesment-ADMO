@@ -2,10 +2,17 @@ package com.admo.orderservice.service;
 
 import com.admo.orderservice.entity.LineItem;
 import com.admo.orderservice.entity.Order;
+import com.admo.orderservice.entity.OrderStatus;
+import com.admo.orderservice.exception.OrderBusinessException;
+import com.admo.orderservice.exception.OrderNotFoundException;
 import com.admo.orderservice.repository.OrderRepository;
 
+import com.admo.orderservice.state.CancelledState;
+import com.admo.orderservice.state.PaidState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -14,6 +21,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+
 
 class OrderServiceTest {
     private OrderRepository repository;
@@ -93,5 +101,105 @@ class OrderServiceTest {
 
         assertTrue(result.isEmpty());
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void shouldReturnPagedOrdersSortedByHighestTotal() {
+        Order low = new Order("A", List.of(new LineItem("Apple", 1, new BigDecimal("1000"))));
+        Order high = new Order("B", List.of(new LineItem("Apple", 1, new BigDecimal("5000"))));
+
+        when(repository.findAll()).thenReturn(List.of(low, high));
+
+        Page<Order> page = service.getAll(PageRequest.of(0, 10), "highest_total");
+
+        assertEquals(2, page.getTotalElements());
+        assertEquals(high, page.getContent().get(0));
+    }
+
+    @Test
+    void shouldReturnRequestedPage() {
+        Order a = new Order("A", List.of(new LineItem("A",1,BigDecimal.ONE)));
+        Order b = new Order("B", List.of(new LineItem("B",1,BigDecimal.TEN)));
+        Order c = new Order("C", List.of(new LineItem("C",1,new BigDecimal("100"))));
+
+        when(repository.findAll()).thenReturn(List.of(a,b,c));
+        Page<Order> page = service.getAll(PageRequest.of(1,1),"highest_total");
+
+        assertEquals(1,page.getContent().size());
+    }
+
+    @Test
+    void invalidSortKeyThrowsBusinessException() {
+        when(repository.findAll()).thenReturn(List.of());
+        assertThrows(OrderBusinessException.class, () -> service.getAll(PageRequest.of(0,10),"invalid"));
+    }
+
+    @Test
+    void shouldReturnFalseWhenDeletingUnknownOrder() {
+        UUID id = UUID.randomUUID();
+        when(repository.existsById(id)).thenReturn(false);
+        assertFalse(service.delete(id));
+        verify(repository, never()).deleteById(any());
+    }
+
+    @Test
+    void shouldChangeStatus() {
+        UUID id = order.getOrderId();
+
+        when(repository.findById(id)).thenReturn(Optional.of(order));
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        Order updated = service.changeStatus(id, OrderStatus.PAID, null);
+
+        assertEquals(OrderStatus.PAID, updated.getStatus());
+        verify(repository).save(order);
+    }
+
+    @Test
+    void changeStatusUnknownOrderThrows() {
+        UUID id = UUID.randomUUID();
+
+        when(repository.findById(id)).thenReturn(Optional.empty());
+        assertThrows(OrderNotFoundException.class, () -> service.changeStatus(id, OrderStatus.PAID, null));
+    }
+
+    @Test
+    void paidStateAllowsCancel() {
+        PaidState state = new PaidState();
+        assertTrue(state.canTransitionTo(OrderStatus.CANCELLED));
+    }
+
+    @Test
+    void paidStateRejectsDelivered() {
+        PaidState state = new PaidState();
+        assertFalse(state.canTransitionTo(OrderStatus.DELIVERED));
+    }
+
+    @Test
+    void cancelledStateRejectsBlankReason() {
+        CancelledState state = new CancelledState();
+        assertThrows(OrderBusinessException.class, () -> state.validateTransitionData(""));
+    }
+
+    @Test
+    void cancelledStateAcceptsReason() {
+        CancelledState state = new CancelledState();
+        assertDoesNotThrow(() -> state.validateTransitionData("Customer request"));
+    }
+
+    @Test
+    void equalLineItemsAreEqual() {
+        LineItem a = new LineItem("Apple",2,new BigDecimal("10.00"));
+        LineItem b = new LineItem("Apple",2,new BigDecimal("10.000"));
+
+        assertEquals(a,b);
+        assertEquals(a.hashCode(), b.hashCode());
+    }
+
+    @Test
+    void differentLineItemsAreNotEqual() {
+        LineItem a = new LineItem("Apple",2,new BigDecimal("10"));
+        LineItem b = new LineItem("Apple",3,new BigDecimal("10"));
+
+        assertNotEquals(a,b);
     }
 }
