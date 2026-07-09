@@ -59,4 +59,30 @@ class OrderTest {
 
         assertThatThrownBy(() -> order.changeStatus(OrderStatus.SHIPPED, null)).isInstanceOf(OrderBusinessException.class);
     }
+
+    @Test
+    void cancellingWithoutReasonFails() {
+        Order order = newOrder();
+        assertThatThrownBy(() -> order.changeStatus(OrderStatus.CANCELLED, null))
+                .isInstanceOf(OrderBusinessException.class)
+                .hasMessageContaining("Reason");
+    }
+
+    @Test
+    void cancellingWithReasonStoresIt() {
+        Order order = newOrder();
+        order.changeStatus(OrderStatus.CANCELLED, "Changed my mind");
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(order.getCancellationReason()).isEqualTo("Changed my mind");
+    }
+
+    @Test
+    void cannotCancelAfterShipped() {
+        Order order = newOrder();
+        order.changeStatus(OrderStatus.PAID, null);
+        order.changeStatus(OrderStatus.SHIPPED, null);
+
+        assertThatThrownBy(() -> order.changeStatus(OrderStatus.CANCELLED, "too late")).isInstanceOf(OrderBusinessException.class);
+    }
 }
