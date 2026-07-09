@@ -38,6 +38,11 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("ORDER_NOT_FOUND", ex.getMessage()));
     }
 
+    @ExceptionHandler(OrderBusinessException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessException(OrderBusinessException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getCode(), ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex) {
         return ResponseEntity.internalServerError()

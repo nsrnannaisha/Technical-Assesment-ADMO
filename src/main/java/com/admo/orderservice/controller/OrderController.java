@@ -2,6 +2,7 @@ package com.admo.orderservice.controller;
 
 import com.admo.orderservice.dto.CreateOrderRequest;
 import com.admo.orderservice.dto.OrderResponse;
+import com.admo.orderservice.dto.StatusTransitionRequest;
 import com.admo.orderservice.dto.UpdateOrderRequest;
 import com.admo.orderservice.entity.Order;
 import com.admo.orderservice.exception.OrderNotFoundException;
@@ -63,5 +64,11 @@ public class OrderController {
         }
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<OrderResponse> changeStatus(@PathVariable UUID id, @Valid @RequestBody StatusTransitionRequest request) {
+        Order updated = service.changeStatus(id, request.getStatus(), request.getReason());
+        return ResponseEntity.ok(OrderMapper.toResponse(updated));
     }
 }

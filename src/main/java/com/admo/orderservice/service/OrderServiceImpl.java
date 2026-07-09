@@ -2,6 +2,8 @@ package com.admo.orderservice.service;
 
 import com.admo.orderservice.entity.LineItem;
 import com.admo.orderservice.entity.Order;
+import com.admo.orderservice.entity.OrderStatus;
+import com.admo.orderservice.exception.OrderNotFoundException;
 import com.admo.orderservice.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,5 +53,13 @@ public class OrderServiceImpl implements OrderService {
 
         repository.deleteById(id);
         return true;
+    }
+
+    @Override
+    @Transactional
+    public Order changeStatus(UUID id, OrderStatus newStatus, String reason) {
+        Order order = repository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+        order.changeStatus(newStatus, reason);
+        return repository.save(order);
     }
 }
