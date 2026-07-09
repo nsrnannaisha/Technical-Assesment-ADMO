@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -42,7 +43,7 @@ public class Order {
     public Order(String customerName, List<LineItem> items) {
         this.orderId = UUID.randomUUID();
         this.customerName = customerName;
-        this.items = items;
+        this.items = new ArrayList<>(items);
         this.status = OrderStatus.CREATED;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
@@ -59,7 +60,8 @@ public class Order {
 
     public void applyUpdate(String customerName, List<LineItem> items) {
         this.customerName = customerName;
-        this.items = items;
+        this.items.clear();
+        this.items.addAll(items);
         this.totalAmount = calculateTotalAmount();
         this.updatedAt = LocalDateTime.now();
     }
