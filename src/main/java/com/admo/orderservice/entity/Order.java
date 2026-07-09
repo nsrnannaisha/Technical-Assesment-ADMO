@@ -54,9 +54,7 @@ public class Order {
             return BigDecimal.ZERO;
         }
 
-        return items.stream()
-                .map(LineItem::getSubtotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return items.stream().map(LineItem::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public void applyUpdate(String customerName, List<LineItem> items) {

@@ -31,47 +31,26 @@ public class OrderController {
 
         Order order = service.create(OrderMapper.toEntity(request));
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(OrderMapper.toResponse(order));
+        return ResponseEntity.status(HttpStatus.CREATED).body(OrderMapper.toResponse(order));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponse> getById(@PathVariable UUID id) {
 
-        return service.getById(id)
-                .map(OrderMapper::toResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return service.getById(id).map(OrderMapper::toResponse)
+                .map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping
     public ResponseEntity<List<OrderResponse>> getAll() {
-
-        List<OrderResponse> responses =
-                service.getAll()
-                        .stream()
-                        .map(OrderMapper::toResponse)
-                        .toList();
-
+        List<OrderResponse> responses = service.getAll().stream().map(OrderMapper::toResponse).toList();
         return ResponseEntity.ok(responses);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OrderResponse> update(
-            @PathVariable UUID id,
-            @Valid @RequestBody UpdateOrderRequest request) {
-
-        Optional<Order> updated = service.update(
-                id,
-                request.getCustomerName(),
-                OrderMapper.toLineItems(request.getItems())
-        );
-
-        return updated
-                .map(OrderMapper::toResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<OrderResponse> update(@PathVariable UUID id, @Valid @RequestBody UpdateOrderRequest request) {
+        Optional<Order> updated = service.update(id, request.getCustomerName(), OrderMapper.toLineItems(request.getItems()));
+        return updated.map(OrderMapper::toResponse).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

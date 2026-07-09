@@ -56,6 +56,7 @@ class OrderServiceTest {
         when(repository.existsById(id)).thenReturn(true);
         service.delete(id);
         verify(repository).deleteById(id);
+        assertTrue(service.delete(id));
     }
 
     @Test
