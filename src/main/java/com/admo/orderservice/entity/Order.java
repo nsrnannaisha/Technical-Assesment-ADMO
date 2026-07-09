@@ -50,6 +50,10 @@ public class Order {
     }
 
     private BigDecimal calculateTotalAmount() {
+        if (items == null || items.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
         return items.stream()
                 .map(LineItem::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
