@@ -194,6 +194,48 @@ class OrderControllerTest {
 
             mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
         }
+
+        @Test
+        void shouldRejectUnitPriceWithAnyDecimal() throws Exception {
+            String request = """
+                { "customerName":"Ais", "items":[
+                    {"productName":"Apple","quantity":2,"unitPrice":10000.5}
+                ]}
+                """;
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldAcceptQuantityAtExactLimit() throws Exception {
+            when(orderService.create(any(Order.class))).thenReturn(dummyOrder());
+
+            String request = """
+                { "customerName":"Ais", "items":[
+                    {"productName":"Apple","quantity":10000,"unitPrice":10000}
+                ]}
+                """;
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isCreated());
+        }
+
+        @Test
+        void shouldAcceptItemListAtExactLimit() throws Exception {
+            when(orderService.create(any(Order.class))).thenReturn(dummyOrder());
+
+            StringBuilder items = new StringBuilder();
+            for (int i = 0; i < 100; i++) {
+                if (i > 0) items.append(",");
+                items.append("""
+                    {"productName":"Item%d","quantity":1,"unitPrice":1000}
+                    """.formatted(i));
+                        }
+                        String request = """
+                { "customerName":"Ais", "items":[%s] }
+                """.formatted(items);
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isCreated());
+        }
     }
 
     @Nested
