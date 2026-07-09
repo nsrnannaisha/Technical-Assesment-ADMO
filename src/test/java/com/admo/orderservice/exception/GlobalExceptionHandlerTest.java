@@ -1,5 +1,6 @@
-package com.admo.orderservice.controller;
+package com.admo.orderservice.exception;
 
+import com.admo.orderservice.controller.OrderController;
 import com.admo.orderservice.service.OrderService;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
