@@ -2,6 +2,8 @@ package com.admo.orderservice.exception;
 
 import com.admo.orderservice.controller.OrderController;
 import com.admo.orderservice.service.OrderService;
+import com.admo.orderservice.entity.OrderStatus;
+
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +18,8 @@ import java.util.UUID;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 @WebMvcTest(OrderController.class)
 class GlobalExceptionHandlerTest {
@@ -100,5 +104,55 @@ class GlobalExceptionHandlerTest {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"));
         }
+    }
+
+    @Test
+    void illegalTransitionMapsTo409WithCode() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        when(orderService.changeStatus(
+                eq(id),
+                eq(OrderStatus.SHIPPED),
+                any()))
+                .thenThrow(new OrderBusinessException(
+                        "ILLEGAL_STATUS_TRANSITION",
+                        "Cannot transition order from CREATED to SHIPPED"));
+
+        mockMvc.perform(
+                        patch("/orders/{id}/status", id)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                        {
+                          "status":"SHIPPED"
+                        }
+                        """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code")
+                        .value("ILLEGAL_STATUS_TRANSITION"));
+    }
+
+    @Test
+    void missingCancelReasonMapsTo400() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        when(orderService.changeStatus(
+                eq(id),
+                eq(OrderStatus.CANCELLED),
+                any()))
+                .thenThrow(new OrderBusinessException(
+                        "MISSING_TRANSITION_DATA",
+                        "Reason is required to cancel an order"));
+
+        mockMvc.perform(
+                        patch("/orders/{id}/status", id)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                        {
+                          "status":"CANCELLED"
+                        }
+                        """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("MISSING_TRANSITION_DATA"));
     }
 }

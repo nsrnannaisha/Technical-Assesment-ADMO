@@ -312,7 +312,7 @@ class OrderControllerTest {
     @Test
     void patchStatusIllegalTransitionReturns409() throws Exception {
         UUID id = UUID.randomUUID();
-        when(orderService.changeStatus(eq(id), eq(OrderStatus.SHIPPED), any())).thenThrow(new OrderBusinessException("Illegal transition", "Cannot transition order from PAID to CANCELLED"));
+        when(orderService.changeStatus(eq(id), eq(OrderStatus.SHIPPED), any())).thenThrow(new OrderBusinessException("ILLEGAL_STATUS_TRANSITION", "Cannot transition order from PAID to CANCELLED"));
         mockMvc.perform(patch("/orders/{id}/status", id).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"SHIPPED\"}")).andExpect(status().isConflict());
     }
 }
