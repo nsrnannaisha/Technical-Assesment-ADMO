@@ -11,6 +11,7 @@ import com.admo.orderservice.service.OrderService;
 
 import jakarta.validation.Valid;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -48,7 +49,8 @@ public class OrderController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<OrderResponse>> getAll(@RequestParam(defaultValue = "newest") String sort, Pageable pageable) {
+    public ResponseEntity<Page<OrderResponse>> getAll(@RequestParam(defaultValue = "newest") String sort, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
         Page<OrderResponse> result = service.getAll(pageable, sort).map(OrderMapper::toResponse);
         return ResponseEntity.ok(result);
     }

@@ -8,11 +8,9 @@ public abstract class OrderState {
     public abstract boolean canTransitionTo(OrderStatus target);
     public void validateTransitionData(String reason) {}
 
-    public void validateTransition(OrderStatus target, String reason) {
+    public void validateTransition(OrderStatus target) {
         if (!canTransitionTo(target)) {
             throw new OrderBusinessException("ILLEGAL_STATUS_TRANSITION", "Cannot transition order from " + getStatus() + " to " + target);
         }
-
-        validateTransitionData(reason);
     }
 }

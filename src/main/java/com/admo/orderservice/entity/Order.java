@@ -28,6 +28,7 @@ public class Order {
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "order_items", joinColumns = @JoinColumn(name = "order_id"))
+    @OrderColumn(name = "item_index")
     private List<LineItem> items;
 
     @Enumerated(EnumType.STRING)
@@ -85,11 +86,8 @@ public class Order {
     }
 
     private void validateStatusTransition(OrderStatus newStatus, String reason) {
-        OrderStateFactory.from(status)
-                .validateTransition(newStatus, reason);
-
-        OrderStateFactory.from(newStatus)
-                .validateTransitionData(reason);
+        OrderStateFactory.from(status).validateTransition(newStatus);
+        OrderStateFactory.from(newStatus).validateTransitionData(reason);
     }
 
     public void changeStatus(OrderStatus newStatus, String reason) {
