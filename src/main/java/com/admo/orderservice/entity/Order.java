@@ -1,5 +1,6 @@
 package com.admo.orderservice.entity;
 
+import com.admo.orderservice.exception.OrderBusinessException;
 import com.admo.orderservice.state.OrderState;
 import com.admo.orderservice.state.OrderStateFactory;
 import lombok.Getter;
@@ -65,9 +66,13 @@ public class Order {
 
     public void applyUpdate(String customerName, List<LineItem> items) {
         this.customerName = customerName;
-        this.items.clear();
-        this.items.addAll(items);
-        this.totalAmount = calculateTotalAmount();
+        if (this.status == OrderStatus.CREATED) {
+            this.items.clear();
+            this.items.addAll(items);
+            this.totalAmount = calculateTotalAmount();
+        } else if (!this.items.equals(items)) {
+            throw new OrderBusinessException("ITEMS_IMMUTABLE", "Order " + orderId + " has been paid; line items can no longer be modified");
+        }
         this.updatedAt = LocalDateTime.now();
     }
 

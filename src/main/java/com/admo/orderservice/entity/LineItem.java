@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 @Embeddable
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -30,5 +31,17 @@ public class LineItem {
 
     public BigDecimal getSubtotal() {
         return unitPrice.multiply(BigDecimal.valueOf(quantity));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof LineItem other)) return false;
+        return quantity == other.quantity && Objects.equals(productName, other.productName) && unitPrice.compareTo(other.unitPrice) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(productName, quantity, unitPrice.stripTrailingZeros());
     }
 }
