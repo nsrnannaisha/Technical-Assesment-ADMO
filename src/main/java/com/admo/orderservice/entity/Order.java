@@ -1,5 +1,6 @@
 package com.admo.orderservice.entity;
 
+import com.admo.orderservice.exception.OrderBusinessException;
 import lombok.Getter;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -40,6 +41,9 @@ public class Order {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column
+    private String cancellationReason;
+
     public Order(String customerName, List<LineItem> items) {
         this.orderId = UUID.randomUUID();
         this.customerName = customerName;
@@ -63,6 +67,18 @@ public class Order {
         this.items.clear();
         this.items.addAll(items);
         this.totalAmount = calculateTotalAmount();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void changeStatus(OrderStatus newStatus, String reason) {
+        if (!this.status.canTransitionTo(newStatus)) {
+            throw new OrderBusinessException("ILLEGAL_STATUS_TRANSITION", "Cannot transition order from " + this.status + " to " + newStatus);
+        }
+        newStatus.validateTransitionData(reason);
+        this.status = newStatus;
+        if (newStatus == OrderStatus.CANCELLED) {
+            this.cancellationReason = reason;
+        }
         this.updatedAt = LocalDateTime.now();
     }
 }
