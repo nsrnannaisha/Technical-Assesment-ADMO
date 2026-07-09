@@ -19,6 +19,6 @@ public class LineItemRequest {
     private int quantity;
 
     @Positive
-    @Digits(integer = 17, fraction = 2, message = "unitPrice must have at most 2 decimal places")
+    @Digits(integer = 17, fraction = 0, message = "unitPrice must be a whole number (IDR)")
     private BigDecimal unitPrice;
 }
