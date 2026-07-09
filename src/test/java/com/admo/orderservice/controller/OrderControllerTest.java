@@ -320,4 +320,20 @@ class OrderControllerTest {
         when(orderService.changeStatus(eq(id), eq(OrderStatus.SHIPPED), any())).thenThrow(new OrderBusinessException("ILLEGAL_STATUS_TRANSITION", "Cannot transition order from PAID to CANCELLED"));
         mockMvc.perform(patch("/orders/{id}/status", id).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"SHIPPED\"}")).andExpect(status().isConflict());
     }
+
+    @Test
+    void listOrders_withCustomSortKey_doesNotBreakOnPageableSortBinding() throws Exception {
+        Page<Order> page = new PageImpl<>(List.of(dummyOrder()));
+        when(orderService.getAll(any(Pageable.class), eq("highest_total"))).thenReturn(page);
+
+        mockMvc.perform(get("/orders?page=0&size=10&sort=highest_total")).andExpect(status().isOk());
+    }
+
+    @Test
+    void listOrders_invalidSortKey_returns400() throws Exception {
+        when(orderService.getAll(any(Pageable.class), eq("unknown_key"))).thenThrow(new OrderBusinessException("INVALID_SORT_KEY", "Unknown sort key: unknown_key"));
+
+        mockMvc.perform(get("/orders?page=0&size=10&sort=unknown_key")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_SORT_KEY"));
+    }
 }

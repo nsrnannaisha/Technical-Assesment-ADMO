@@ -109,4 +109,19 @@ class OrderTest {
         order.applyUpdate("New Name", List.of(new LineItem("Apple", 3, BigDecimal.valueOf(5000))));
         assertThat(order.getCustomerName()).isEqualTo("New Name");
     }
+
+    @Test
+    void cancelOrder_withoutReason_throwsMissingTransitionData() {
+        Order order = new Order("Andi", List.of(new LineItem("Apple", 1, BigDecimal.ONE)));
+        assertThatThrownBy(() -> order.changeStatus(OrderStatus.CANCELLED, null)).isInstanceOf(OrderBusinessException.class)
+                .extracting(ex -> ((OrderBusinessException) ex).getCode()).isEqualTo("MISSING_TRANSITION_DATA");
+    }
+
+    @Test
+    void shipOrder_withoutReason_doesNotRequireReason() {
+        Order order = new Order("Andi", List.of(new LineItem("Apple", 1, BigDecimal.ONE)));
+        order.changeStatus(OrderStatus.PAID, null);
+        order.changeStatus(OrderStatus.SHIPPED, null);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.SHIPPED);
+    }
 }
