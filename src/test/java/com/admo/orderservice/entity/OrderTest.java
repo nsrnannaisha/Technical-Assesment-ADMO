@@ -1,13 +1,20 @@
 package com.admo.orderservice.entity;
 
 import org.junit.jupiter.api.Test;
+import com.admo.orderservice.exception.OrderBusinessException;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OrderTest {
+
+    private Order newOrder() {
+        return new Order("Andi Wijaya", List.of(new LineItem("Apple", 3, BigDecimal.valueOf(0.50))));
+    }
 
     @Test
     void calculateTotalAmountForSingleItem() {
@@ -30,5 +37,26 @@ class OrderTest {
         assertEquals(new BigDecimal("1.665"), apple.getSubtotal());
     }
 
+    @Test
+    void createdOrderCanBePaid() {
+        Order order = newOrder();
+        order.changeStatus(OrderStatus.PAID, null);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
+    }
 
+    @Test
+    void cannotShipBeforePaid() {
+        Order order = newOrder();
+        assertThatThrownBy(() -> order.changeStatus(OrderStatus.SHIPPED, null)).isInstanceOf(OrderBusinessException.class).hasMessageContaining("CREATED");
+    }
+
+    @Test
+    void deliveredOrderCannotBeReactivated() {
+        Order order = newOrder();
+        order.changeStatus(OrderStatus.PAID, null);
+        order.changeStatus(OrderStatus.SHIPPED, null);
+        order.changeStatus(OrderStatus.DELIVERED, null);
+
+        assertThatThrownBy(() -> order.changeStatus(OrderStatus.SHIPPED, null)).isInstanceOf(OrderBusinessException.class);
+    }
 }
