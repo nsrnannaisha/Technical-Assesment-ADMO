@@ -4,6 +4,7 @@ import com.admo.orderservice.dto.CreateOrderRequest;
 import com.admo.orderservice.dto.OrderResponse;
 import com.admo.orderservice.dto.UpdateOrderRequest;
 import com.admo.orderservice.entity.Order;
+import com.admo.orderservice.exception.OrderNotFoundException;
 import com.admo.orderservice.mapper.OrderMapper;
 import com.admo.orderservice.service.OrderService;
 import jakarta.validation.Valid;
@@ -36,9 +37,10 @@ public class OrderController {
 
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponse> getById(@PathVariable UUID id) {
+        Order order = service.getById(id)
+                .orElseThrow(() -> new OrderNotFoundException(id));
 
-        return service.getById(id).map(OrderMapper::toResponse)
-                .map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(OrderMapper.toResponse(order));
     }
 
     @GetMapping
@@ -49,17 +51,17 @@ public class OrderController {
 
     @PutMapping("/{id}")
     public ResponseEntity<OrderResponse> update(@PathVariable UUID id, @Valid @RequestBody UpdateOrderRequest request) {
-        Optional<Order> updated = service.update(id, request.getCustomerName(), OrderMapper.toLineItems(request.getItems()));
-        return updated.map(OrderMapper::toResponse).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        Order updated = service.update(id, request.getCustomerName(), OrderMapper.toLineItems(request.getItems())).orElseThrow(() -> new OrderNotFoundException(id));
+        return ResponseEntity.ok(OrderMapper.toResponse(updated));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
 
-        if (service.delete(id)) {
-            return ResponseEntity.noContent().build();
+        if (!service.delete(id)) {
+            throw new OrderNotFoundException(id);
         }
 
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.noContent().build();
     }
 }
