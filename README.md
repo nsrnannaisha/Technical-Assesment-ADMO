@@ -6,11 +6,11 @@ A backend service for a simple e-commerce shop: create orders, manage lifecycle.
 
 ## Versions
 
-| Component | Version |
-|---|---|
-| Java | 21 (LTS) |
-| Spring Boot | 3.5.4 |
-| Build tool | Gradle (Kotlin DSL) |
+| Component | Version                       |
+|---|-------------------------------|
+| Java | 21 (LTS)                      |
+| Spring Boot | 4.1.0                         |
+| Build tool | Gradle (Kotlin DSL)           |
 | Database | H2 (in-memory, JPA/Hibernate) |
 
 ## Build, run, and test
