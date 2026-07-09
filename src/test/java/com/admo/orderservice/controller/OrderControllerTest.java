@@ -12,6 +12,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -221,14 +224,16 @@ class OrderControllerTest {
 
         @Test
         void shouldReturnOrders() throws Exception {
-            when(orderService.getAll()).thenReturn(List.of(dummyOrder()));
-            mockMvc.perform(get("/orders")) .andExpect(status().isOk());
+            Page<Order> page = new PageImpl<>(List.of(dummyOrder()));
+            when(orderService.getAll(any(Pageable.class), eq("newest"))).thenReturn(page);
+            mockMvc.perform(get("/orders")).andExpect(status().isOk()).andExpect(jsonPath("$.content").isArray()).andExpect(jsonPath("$.content.length()").value(1));
         }
 
         @Test
         void shouldReturnEmptyList() throws Exception {
-            when(orderService.getAll()).thenReturn(List.of());
-            mockMvc.perform(get("/orders")).andExpect(status().isOk());
+            Page<Order> page = new PageImpl<>(List.of());
+            when(orderService.getAll(any(Pageable.class), eq("newest"))).thenReturn(page);
+            mockMvc.perform(get("/orders")).andExpect(status().isOk()).andExpect(jsonPath("$.content").isArray()).andExpect(jsonPath("$.content.length()").value(0));
         }
     }
 
