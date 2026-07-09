@@ -8,13 +8,16 @@ import com.admo.orderservice.entity.Order;
 import com.admo.orderservice.exception.OrderNotFoundException;
 import com.admo.orderservice.mapper.OrderMapper;
 import com.admo.orderservice.service.OrderService;
+
 import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -45,9 +48,9 @@ public class OrderController {
     }
 
     @GetMapping
-    public ResponseEntity<List<OrderResponse>> getAll() {
-        List<OrderResponse> responses = service.getAll().stream().map(OrderMapper::toResponse).toList();
-        return ResponseEntity.ok(responses);
+    public ResponseEntity<Page<OrderResponse>> getAll(@RequestParam(defaultValue = "newest") String sort, Pageable pageable) {
+        Page<OrderResponse> result = service.getAll(pageable, sort).map(OrderMapper::toResponse);
+        return ResponseEntity.ok(result);
     }
 
     @PutMapping("/{id}")
