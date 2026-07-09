@@ -45,4 +45,17 @@ class OrderRepositoryTest {
         repository.deleteById(order.getOrderId());
         assertFalse(repository.findById(order.getOrderId()).isPresent());
     }
+
+    @Test
+    void shouldUpdateOrderItemsWithoutError() {
+        Order order = repository.save(new Order("Ais",
+                List.of(new LineItem("Apple", 2, new BigDecimal("10.00")))));
+
+        order.applyUpdate("Budi", List.of(new LineItem("Bread", 1, new BigDecimal("2.20"))));
+        Order updated = repository.saveAndFlush(order);
+
+        assertEquals("Budi", updated.getCustomerName());
+        assertEquals(1, updated.getItems().size());
+        assertEquals(new BigDecimal("2.20"), updated.getTotalAmount());
+    }
 }
