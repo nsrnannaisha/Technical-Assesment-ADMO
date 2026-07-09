@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class OrderTest {
 
     private Order newOrder() {
-        return new Order("Andi Wijaya", List.of(new LineItem("Apple", 3, BigDecimal.valueOf(0.50))));
+        return new Order("Ais", List.of(new LineItem("Apple", 3, BigDecimal.valueOf(5000))));
     }
 
     @Test
@@ -84,5 +84,30 @@ class OrderTest {
         order.changeStatus(OrderStatus.SHIPPED, null);
 
         assertThatThrownBy(() -> order.changeStatus(OrderStatus.CANCELLED, "too late")).isInstanceOf(OrderBusinessException.class);
+    }
+
+    @Test
+    void itemsCanBeChangedWhileCreated() {
+        Order order = newOrder();
+        order.applyUpdate("Ais", List.of(new LineItem("Bread", 2, BigDecimal.valueOf(2000))));
+
+        assertThat(order.getTotalAmount()).isEqualByComparingTo("4000");
+    }
+
+    @Test
+    void changingItemsAfterPaidThrows() {
+        Order order = newOrder();
+        order.changeStatus(OrderStatus.PAID, null);
+
+        assertThatThrownBy(() -> order.applyUpdate("Ais", List.of(new LineItem("Bread", 5, BigDecimal.valueOf(2000)))))
+                .isInstanceOf(OrderBusinessException.class).hasMessageContaining("paid");
+    }
+
+    @Test
+    void resubmittingIdenticalItemsAfterPaidIsAllowed() {
+        Order order = newOrder();
+        order.changeStatus(OrderStatus.PAID, null);
+        order.applyUpdate("New Name", List.of(new LineItem("Apple", 3, BigDecimal.valueOf(5000))));
+        assertThat(order.getCustomerName()).isEqualTo("New Name");
     }
 }
