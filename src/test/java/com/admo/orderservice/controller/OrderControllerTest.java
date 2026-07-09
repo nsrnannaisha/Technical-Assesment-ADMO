@@ -2,6 +2,8 @@ package com.admo.orderservice.controller;
 
 import com.admo.orderservice.entity.LineItem;
 import com.admo.orderservice.entity.Order;
+import com.admo.orderservice.entity.OrderStatus;
+import com.admo.orderservice.exception.OrderBusinessException;
 import com.admo.orderservice.service.OrderService;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -10,6 +12,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -219,14 +224,16 @@ class OrderControllerTest {
 
         @Test
         void shouldReturnOrders() throws Exception {
-            when(orderService.getAll()).thenReturn(List.of(dummyOrder()));
-            mockMvc.perform(get("/orders")) .andExpect(status().isOk());
+            Page<Order> page = new PageImpl<>(List.of(dummyOrder()));
+            when(orderService.getAll(any(Pageable.class), eq("newest"))).thenReturn(page);
+            mockMvc.perform(get("/orders")).andExpect(status().isOk()).andExpect(jsonPath("$.content").isArray()).andExpect(jsonPath("$.content.length()").value(1));
         }
 
         @Test
         void shouldReturnEmptyList() throws Exception {
-            when(orderService.getAll()).thenReturn(List.of());
-            mockMvc.perform(get("/orders")).andExpect(status().isOk());
+            Page<Order> page = new PageImpl<>(List.of());
+            when(orderService.getAll(any(Pageable.class), eq("newest"))).thenReturn(page);
+            mockMvc.perform(get("/orders")).andExpect(status().isOk()).andExpect(jsonPath("$.content").isArray()).andExpect(jsonPath("$.content.length()").value(0));
         }
     }
 
@@ -292,5 +299,41 @@ class OrderControllerTest {
         void shouldRejectInvalidUuid() throws Exception {
             mockMvc.perform(delete("/orders/invalid-id")).andExpect(status().isBadRequest());
         }
+    }
+
+    @Test
+    void patchStatusReturnsUpdatedOrder() throws Exception {
+        UUID id = UUID.randomUUID();
+        Order updated = dummyOrder();
+        updated.changeStatus(OrderStatus.PAID, null);
+
+        when(orderService.changeStatus(eq(id), eq(OrderStatus.PAID), any()))
+                .thenReturn(updated);
+
+        mockMvc.perform(patch("/orders/{id}/status", id).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"PAID\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PAID"));
+    }
+
+    @Test
+    void patchStatusIllegalTransitionReturns409() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(orderService.changeStatus(eq(id), eq(OrderStatus.SHIPPED), any())).thenThrow(new OrderBusinessException("ILLEGAL_STATUS_TRANSITION", "Cannot transition order from PAID to CANCELLED"));
+        mockMvc.perform(patch("/orders/{id}/status", id).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"SHIPPED\"}")).andExpect(status().isConflict());
+    }
+
+    @Test
+    void listOrders_withCustomSortKey_doesNotBreakOnPageableSortBinding() throws Exception {
+        Page<Order> page = new PageImpl<>(List.of(dummyOrder()));
+        when(orderService.getAll(any(Pageable.class), eq("highest_total"))).thenReturn(page);
+
+        mockMvc.perform(get("/orders?page=0&size=10&sort=highest_total")).andExpect(status().isOk());
+    }
+
+    @Test
+    void listOrders_invalidSortKey_returns400() throws Exception {
+        when(orderService.getAll(any(Pageable.class), eq("unknown_key"))).thenThrow(new OrderBusinessException("INVALID_SORT_KEY", "Unknown sort key: unknown_key"));
+
+        mockMvc.perform(get("/orders?page=0&size=10&sort=unknown_key")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_SORT_KEY"));
     }
 }

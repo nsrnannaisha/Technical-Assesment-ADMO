@@ -1,5 +1,8 @@
 package com.admo.orderservice.entity;
 
+import com.admo.orderservice.exception.OrderBusinessException;
+import com.admo.orderservice.state.OrderState;
+import com.admo.orderservice.state.OrderStateFactory;
 import lombok.Getter;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -25,6 +28,7 @@ public class Order {
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "order_items", joinColumns = @JoinColumn(name = "order_id"))
+    @OrderColumn(name = "item_index")
     private List<LineItem> items;
 
     @Enumerated(EnumType.STRING)
@@ -39,6 +43,9 @@ public class Order {
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column
+    private String cancellationReason;
 
     public Order(String customerName, List<LineItem> items) {
         this.orderId = UUID.randomUUID();
@@ -60,9 +67,37 @@ public class Order {
 
     public void applyUpdate(String customerName, List<LineItem> items) {
         this.customerName = customerName;
-        this.items.clear();
-        this.items.addAll(items);
-        this.totalAmount = calculateTotalAmount();
+        boolean itemsChanged = !this.items.equals(items);
+
+        if (status != OrderStatus.CREATED && itemsChanged) {
+            throw new OrderBusinessException(
+                    "ITEMS_IMMUTABLE",
+                    "Line items cannot be modified after payment"
+            );
+        }
+
+        if (status == OrderStatus.CREATED) {
+            this.items.clear();
+            this.items.addAll(items);
+            this.totalAmount = calculateTotalAmount();
+        }
+
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    private void validateStatusTransition(OrderStatus newStatus, String reason) {
+        OrderStateFactory.from(status).validateTransition(newStatus);
+        OrderStateFactory.from(newStatus).validateTransitionData(reason);
+    }
+
+    public void changeStatus(OrderStatus newStatus, String reason) {
+        validateStatusTransition(newStatus, reason);
+        this.status = newStatus;
+
+        if (newStatus == OrderStatus.CANCELLED) {
+            this.cancellationReason = reason;
+        }
+
         this.updatedAt = LocalDateTime.now();
     }
 }

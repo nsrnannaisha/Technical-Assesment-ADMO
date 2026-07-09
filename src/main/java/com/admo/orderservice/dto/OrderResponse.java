@@ -13,14 +13,10 @@ import java.util.UUID;
 public class OrderResponse {
 
     private UUID orderId;
-
     private String customerName;
-
     private OrderStatus status;
-
     private BigDecimal totalAmount;
-
     private LocalDateTime createdAt;
-
     private LocalDateTime updatedAt;
+    private String cancellationReason;
 }

@@ -19,13 +19,11 @@ public final class OrderMapper {
 
     public static OrderResponse toResponse(Order order) {
         return new OrderResponse(order.getOrderId(), order.getCustomerName(), order.getStatus(),
-                order.getTotalAmount(), order.getCreatedAt(), order.getUpdatedAt()
+                order.getTotalAmount(), order.getCreatedAt(), order.getUpdatedAt(), order.getCancellationReason()
         );
     }
 
     public static List<LineItem> toLineItems(List<LineItemRequest> requests) {
-        return requests.stream()
-                .map(item -> new LineItem(item.getProductName(), item.getQuantity(), item.getUnitPrice()))
-                .toList();
+        return requests.stream().map(item -> new LineItem(item.getProductName(), item.getQuantity(), item.getUnitPrice())).toList();
     }
 }

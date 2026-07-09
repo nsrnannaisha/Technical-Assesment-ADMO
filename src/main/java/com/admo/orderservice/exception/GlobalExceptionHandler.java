@@ -38,6 +38,16 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("ORDER_NOT_FOUND", ex.getMessage()));
     }
 
+    @ExceptionHandler(OrderBusinessException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessException(OrderBusinessException ex) {
+        HttpStatus status = switch (ex.getCode()) {
+            case "ILLEGAL_STATUS_TRANSITION", "ITEMS_IMMUTABLE" -> HttpStatus.CONFLICT;   // valid syntax, invalid against current state
+            case "MISSING_TRANSITION_DATA", "INVALID_SORT_KEY" -> HttpStatus.BAD_REQUEST; // invalid input itself
+            default -> HttpStatus.BAD_REQUEST;
+        };
+        return ResponseEntity.status(status).body(new ErrorResponse(ex.getCode(), ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex) {
         return ResponseEntity.internalServerError()
