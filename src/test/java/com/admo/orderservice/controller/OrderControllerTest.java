@@ -2,6 +2,8 @@ package com.admo.orderservice.controller;
 
 import com.admo.orderservice.entity.LineItem;
 import com.admo.orderservice.entity.Order;
+import com.admo.orderservice.entity.OrderStatus;
+import com.admo.orderservice.exception.OrderBusinessException;
 import com.admo.orderservice.service.OrderService;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -292,5 +294,25 @@ class OrderControllerTest {
         void shouldRejectInvalidUuid() throws Exception {
             mockMvc.perform(delete("/orders/invalid-id")).andExpect(status().isBadRequest());
         }
+    }
+
+    @Test
+    void patchStatusReturnsUpdatedOrder() throws Exception {
+        UUID id = UUID.randomUUID();
+        Order updated = dummyOrder();
+        updated.changeStatus(OrderStatus.PAID, null);
+
+        when(orderService.changeStatus(eq(id), eq(OrderStatus.PAID), any()))
+                .thenReturn(updated);
+
+        mockMvc.perform(patch("/orders/{id}/status", id).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"PAID\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PAID"));
+    }
+
+    @Test
+    void patchStatusIllegalTransitionReturns409() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(orderService.changeStatus(eq(id), eq(OrderStatus.SHIPPED), any())).thenThrow(new OrderBusinessException("Illegal transition", "Cannot transition order from PAID to CANCELLED"));
+        mockMvc.perform(patch("/orders/{id}/status", id).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"SHIPPED\"}")).andExpect(status().isConflict());
     }
 }
