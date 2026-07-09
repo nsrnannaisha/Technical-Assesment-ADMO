@@ -1,6 +1,7 @@
 package com.admo.orderservice.entity;
 
-import com.admo.orderservice.exception.OrderBusinessException;
+import com.admo.orderservice.state.OrderState;
+import com.admo.orderservice.state.OrderStateFactory;
 import lombok.Getter;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -71,14 +72,16 @@ public class Order {
     }
 
     public void changeStatus(OrderStatus newStatus, String reason) {
-        if (!this.status.canTransitionTo(newStatus)) {
-            throw new OrderBusinessException("ILLEGAL_STATUS_TRANSITION", "Cannot transition order from " + this.status + " to " + newStatus);
-        }
-        newStatus.validateTransitionData(reason);
+        OrderState currentState = OrderStateFactory.from(this.status);
+        currentState.validateTransition(newStatus, reason);
+        OrderState targetState = OrderStateFactory.from(newStatus);
+        targetState.validateTransitionData(reason);
         this.status = newStatus;
+
         if (newStatus == OrderStatus.CANCELLED) {
             this.cancellationReason = reason;
         }
+
         this.updatedAt = LocalDateTime.now();
     }
 }
