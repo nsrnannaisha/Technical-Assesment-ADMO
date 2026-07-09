@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(OrderController.class)
@@ -57,6 +58,134 @@ class OrderControllerTest {
 
             mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON)
                     .content(request)).andExpect(status().isCreated());
+        }
+
+        @Test
+        void shouldRejectCustomerNameTooLong() throws Exception {
+            String longName = "A".repeat(256);
+            String request = """
+            { "customerName":"%s", "items":[
+                {"productName":"Apple","quantity":2,"unitPrice":10000}
+            ]}
+            """.formatted(longName);
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldRejectProductNameTooLong() throws Exception {
+            String longName = "A".repeat(256);
+            String request = """
+            { "customerName":"Ais", "items":[
+                {"productName":"%s","quantity":2,"unitPrice":10000}
+            ]}
+            """.formatted(longName);
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldRejectQuantityExceedingLimit() throws Exception {
+            String request = """
+            { "customerName":"Ais", "items":[
+                {"productName":"Apple","quantity":10001,"unitPrice":10000}
+            ]}
+            """;
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldRejectTooManyItems() throws Exception {
+            StringBuilder items = new StringBuilder();
+            for (int i = 0; i < 101; i++) {
+                if (i > 0) items.append(",");
+                items.append("""
+                {"productName":"Item%d","quantity":1,"unitPrice":1000}
+                """.formatted(i));
+            }
+            String request = """
+            { "customerName":"Ais", "items":[%s] }
+            """.formatted(items);
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldRejectUnitPriceWithTooManyDecimals() throws Exception {
+            String request = """
+            { "customerName":"Ais", "items":[
+                {"productName":"Apple","quantity":2,"unitPrice":10000.555}
+            ]}
+            """;
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldRejectNonIntegerQuantity() throws Exception {
+            String request = """
+            { "customerName":"Ais", "items":[
+                {"productName":"Apple","quantity":2.5,"unitPrice":10000}
+            ]}
+            """;
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldRejectEmptyCustomerName() throws Exception {
+            String request = """
+            { "customerName":"", "items":[
+                {"productName":"Apple","quantity":2,"unitPrice":10000}
+            ]}
+            """;
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldRejectEmptyItemList() throws Exception {
+            String request = """
+            { "customerName":"Ais", "items":[] }
+            """;
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.details.items").exists());
+        }
+
+        @Test
+        void shouldRejectNegativeQuantity() throws Exception {
+            String request = """
+            { "customerName":"Ais", "items":[
+                {"productName":"Apple","quantity":-1,"unitPrice":10000}
+            ]}
+            """;
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.details.['items[0].quantity']").exists());
+        }
+
+        @Test
+        void shouldRejectZeroQuantity() throws Exception {
+            String request = """
+            { "customerName":"Ais", "items":[
+                {"productName":"Apple","quantity":0,"unitPrice":10000}
+            ]}
+            """;
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldRejectNegativeUnitPrice() throws Exception {
+            String request = """
+            { "customerName":"Ais", "items":[
+                {"productName":"Apple","quantity":2,"unitPrice":-100}
+            ]}
+            """;
+
+            mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
         }
     }
 
