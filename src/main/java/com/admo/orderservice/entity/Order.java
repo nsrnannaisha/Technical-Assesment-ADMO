@@ -66,21 +66,34 @@ public class Order {
 
     public void applyUpdate(String customerName, List<LineItem> items) {
         this.customerName = customerName;
-        if (this.status == OrderStatus.CREATED) {
+        boolean itemsChanged = !this.items.equals(items);
+
+        if (status != OrderStatus.CREATED && itemsChanged) {
+            throw new OrderBusinessException(
+                    "ITEMS_IMMUTABLE",
+                    "Line items cannot be modified after payment"
+            );
+        }
+
+        if (status == OrderStatus.CREATED) {
             this.items.clear();
             this.items.addAll(items);
             this.totalAmount = calculateTotalAmount();
-        } else if (!this.items.equals(items)) {
-            throw new OrderBusinessException("ITEMS_IMMUTABLE", "Order " + orderId + " has been paid; line items can no longer be modified");
         }
+
         this.updatedAt = LocalDateTime.now();
     }
 
+    private void validateStatusTransition(OrderStatus newStatus, String reason) {
+        OrderStateFactory.from(status)
+                .validateTransition(newStatus, reason);
+
+        OrderStateFactory.from(newStatus)
+                .validateTransitionData(reason);
+    }
+
     public void changeStatus(OrderStatus newStatus, String reason) {
-        OrderState currentState = OrderStateFactory.from(this.status);
-        currentState.validateTransition(newStatus, reason);
-        OrderState targetState = OrderStateFactory.from(newStatus);
-        targetState.validateTransitionData(reason);
+        validateStatusTransition(newStatus, reason);
         this.status = newStatus;
 
         if (newStatus == OrderStatus.CANCELLED) {

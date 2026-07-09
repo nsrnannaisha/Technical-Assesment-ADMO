@@ -99,8 +99,7 @@ class OrderTest {
         Order order = newOrder();
         order.changeStatus(OrderStatus.PAID, null);
 
-        assertThatThrownBy(() -> order.applyUpdate("Ais", List.of(new LineItem("Bread", 5, BigDecimal.valueOf(2000)))))
-                .isInstanceOf(OrderBusinessException.class).hasMessageContaining("paid");
+        assertThatThrownBy(() -> order.applyUpdate("Ais", List.of(new LineItem("Bread", 5, BigDecimal.valueOf(2000))))).isInstanceOf(OrderBusinessException.class).hasMessageContaining("payment");
     }
 
     @Test
