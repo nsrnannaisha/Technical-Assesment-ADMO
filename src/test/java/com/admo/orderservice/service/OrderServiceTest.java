@@ -57,4 +57,40 @@ class OrderServiceTest {
         service.delete(id);
         verify(repository).deleteById(id);
     }
+
+    @Test
+    void shouldUpdateExistingOrderPreservingIdStatusAndCreatedAt() {
+        UUID id = order.getOrderId();
+        var originalCreatedAt = order.getCreatedAt();
+        var originalStatus = order.getStatus();
+
+        when(repository.findById(id)).thenReturn(Optional.of(order));
+        when(repository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        List<LineItem> newItems = List.of(new LineItem("Mango", 3, new BigDecimal("5.000")));
+
+        Optional<Order> result = service.update(id, "Updated Name", newItems);
+
+        assertTrue(result.isPresent());
+        Order updated = result.get();
+
+        assertEquals(id, updated.getOrderId());
+        assertEquals(originalCreatedAt, updated.getCreatedAt());
+        assertEquals(originalStatus, updated.getStatus());
+        assertEquals("Updated Name", updated.getCustomerName());
+        assertEquals(new BigDecimal("15.000"), updated.getTotalAmount());
+
+        verify(repository).save(order);
+    }
+
+    @Test
+    void shouldReturnEmptyWhenUpdatingUnknownOrder() {
+        UUID unknownId = UUID.randomUUID();
+        when(repository.findById(unknownId)).thenReturn(Optional.empty());
+
+        Optional<Order> result = service.update(unknownId, "Name", List.of());
+
+        assertTrue(result.isEmpty());
+        verify(repository, never()).save(any());
+    }
 }

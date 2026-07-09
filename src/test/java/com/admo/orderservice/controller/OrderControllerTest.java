@@ -105,7 +105,7 @@ class OrderControllerTest {
         @Test
         void shouldUpdateOrder() throws Exception {
             UUID id = UUID.randomUUID();
-            when(orderService.update(eq(id), any(Order.class))).thenReturn(Optional.of(dummyOrder()));
+            when(orderService.update(eq(id), any(String.class), any(List.class))).thenReturn(Optional.of(dummyOrder()));
 
             String request = """
             {
@@ -127,7 +127,7 @@ class OrderControllerTest {
         @Test
         void shouldReturn404WhenUpdatingUnknownOrder() throws Exception {
             UUID id = UUID.randomUUID();
-            when(orderService.update(eq(id), any(Order.class))).thenReturn(Optional.empty());
+            when(orderService.update(eq(id), any(String.class), any(List.class))).thenReturn(Optional.empty());
 
             String request = """
                     {
