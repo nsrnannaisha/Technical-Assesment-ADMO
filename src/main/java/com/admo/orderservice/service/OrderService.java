@@ -9,6 +9,6 @@ public interface OrderService {
     Order create(Order order);
     Optional<Order> getById(UUID id);
     List<Order> getAll();
-    Order update(UUID id, Order order);
-    void delete(UUID id);
+    Optional<Order> update(UUID id, Order order);
+    boolean delete(UUID id);
 }

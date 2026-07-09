@@ -2,11 +2,13 @@ package com.admo.orderservice.service;
 
 import com.admo.orderservice.entity.Order;
 import com.admo.orderservice.repository.OrderRepository;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.Optional;
 
+@Service
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository repository;
@@ -31,12 +33,25 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public Order update(UUID id, Order order) {
-        return repository.save(order);
+    public Optional<Order> update(UUID id, Order order) {
+        Optional<Order> existing = repository.findById(id);
+
+        if (existing.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(repository.save(order));
     }
 
     @Override
-    public void delete(UUID id) {
+    public boolean delete(UUID id) {
+
+        if (!repository.existsById(id)) {
+            return false;
+        }
+
         repository.deleteById(id);
+
+        return true;
     }
 }
