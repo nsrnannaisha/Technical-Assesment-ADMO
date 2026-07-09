@@ -36,6 +36,21 @@ class OrderControllerTest {
         return new Order("Ais", List.of(new LineItem("Apple", 2, new BigDecimal("10000"))));
     }
 
+    private String validOrderRequest() {
+        return """
+        {
+          "customerName":"Ais",
+          "items":[
+            {
+              "productName":"Apple",
+              "quantity":2,
+              "unitPrice":10000
+            }
+          ]
+        }
+        """;
+    }
+
     @Nested
     class CreateOrder {
 
@@ -43,21 +58,8 @@ class OrderControllerTest {
         void shouldCreateOrder() throws Exception {
             when(orderService.create(any(Order.class))).thenReturn(dummyOrder());
 
-            String request = """
-            {
-              "customerName":"Ais",
-              "items":[
-                {
-                  "productName":"Apple",
-                  "quantity":2,
-                  "unitPrice":10000
-                }
-              ]
-            }
-            """;
-
             mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON)
-                    .content(request)).andExpect(status().isCreated());
+                    .content(validOrderRequest())).andExpect(status().isCreated());
         }
 
         @Test
@@ -236,21 +238,8 @@ class OrderControllerTest {
             UUID id = UUID.randomUUID();
             when(orderService.update(eq(id), any(String.class), any(List.class))).thenReturn(Optional.of(dummyOrder()));
 
-            String request = """
-            {
-              "customerName":"Updated",
-              "items":[
-                {
-                  "productName":"Apple",
-                  "quantity":2,
-                  "unitPrice":10000
-                }
-              ]
-            }
-            """;
-
             mockMvc.perform(put("/orders/{id}", id).contentType(MediaType.APPLICATION_JSON)
-                    .content(request)).andExpect(status().isOk());
+                    .content(validOrderRequest())).andExpect(status().isOk());
         }
 
         @Test
