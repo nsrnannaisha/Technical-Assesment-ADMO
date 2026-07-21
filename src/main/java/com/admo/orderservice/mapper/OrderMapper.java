@@ -1,10 +1,11 @@
 package com.admo.orderservice.mapper;
 
-import com.admo.orderservice.dto.CreateOrderRequest;
-import com.admo.orderservice.dto.LineItemRequest;
-import com.admo.orderservice.dto.OrderResponse;
+import com.admo.orderservice.dto.OrderDto;
+import com.admo.orderservice.dto.OrderRequest;
+import com.admo.orderservice.dto.CustomerDto;
 import com.admo.orderservice.entity.LineItem;
 import com.admo.orderservice.entity.Order;
+import com.admo.orderservice.entity.Customer;
 
 import java.util.List;
 
@@ -13,17 +14,35 @@ public final class OrderMapper {
     private OrderMapper() {
     }
 
-    public static Order toEntity(CreateOrderRequest request) {
-        return new Order(request.getCustomerName(), toLineItems(request.getItems()));
+    public static Customer toCustomer(String customerName, CustomerDto req) {
+        if (req == null) return null;
+        Customer customer = new Customer();
+        customer.setCustomerName(customerName);
+        customer.setEmail(req.getEmail());
+        customer.setPhoneNum(req.getPhoneNum());
+        return customer;
     }
 
-    public static OrderResponse toResponse(Order order) {
-        return new OrderResponse(order.getOrderId(), order.getCustomerName(), order.getStatus(),
-                order.getTotalAmount(), order.getCreatedAt(), order.getUpdatedAt(), order.getCancellationReason()
+    public static Order toEntity(OrderRequest request) {
+        Customer customer = toCustomer(request.getCustomerName(), request.getCustomer());
+        return new Order(customer, toLineItems(request.getItems()));
+    }
+
+    public static OrderDto toResponse(Order order) {
+        return new OrderDto(order.getOrderId(), order.getCustomerName(), toCustomerResponse(order),
+                order.getStatus(), order.getTotalAmount(), order.getCreatedAt(), order.getUpdatedAt(), order.getCancellationReason()
         );
     }
 
-    public static List<LineItem> toLineItems(List<LineItemRequest> requests) {
+    private static CustomerDto toCustomerResponse(Order order) {
+        Customer customer = order.getCustomer();
+        if (customer == null) {
+            return null;
+        }
+        return new CustomerDto(customer.getCustomerName(), customer.getEmail(), customer.getPhoneNum());
+    }
+
+    public static List<LineItem> toLineItems(List<OrderRequest.LineItem> requests) {
         return requests.stream().map(item -> new LineItem(item.getProductName(), item.getQuantity(), item.getUnitPrice())).toList();
     }
 }

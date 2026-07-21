@@ -38,13 +38,22 @@ class OrderControllerTest {
     private OrderService orderService;
 
     private Order dummyOrder() {
-        return new Order("Ais", List.of(new LineItem("Apple", 2, new BigDecimal("10000"))));
+        com.admo.orderservice.entity.Customer c = new com.admo.orderservice.entity.Customer();
+        c.setCustomerName("Ais");
+        c.setEmail("a@b.c");
+        c.setPhoneNum("123");
+        return new Order(c, List.of(new LineItem("Apple", 2, new BigDecimal("10000"))));
     }
 
     private String validOrderRequest() {
         return """
         {
           "customerName":"Ais",
+          "customer": {
+            "customerName": "Ais",
+            "phoneNum": "123",
+            "email": "a@b.c"
+          },
           "items":[
             {
               "productName":"Apple",
@@ -71,10 +80,10 @@ class OrderControllerTest {
         void shouldRejectCustomerNameTooLong() throws Exception {
             String longName = "A".repeat(256);
             String request = """
-            { "customerName":"%s", "items":[
+            { "customerName":"%s", "customer": {"customerName": "%s", "phoneNum": "123", "email": "a@b.c"}, "items":[
                 {"productName":"Apple","quantity":2,"unitPrice":10000}
             ]}
-            """.formatted(longName);
+            """.formatted(longName, longName);
 
             mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
         }
@@ -83,7 +92,7 @@ class OrderControllerTest {
         void shouldRejectProductNameTooLong() throws Exception {
             String longName = "A".repeat(256);
             String request = """
-            { "customerName":"Ais", "items":[
+            { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[
                 {"productName":"%s","quantity":2,"unitPrice":10000}
             ]}
             """.formatted(longName);
@@ -94,7 +103,7 @@ class OrderControllerTest {
         @Test
         void shouldRejectQuantityExceedingLimit() throws Exception {
             String request = """
-            { "customerName":"Ais", "items":[
+            { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[
                 {"productName":"Apple","quantity":10001,"unitPrice":10000}
             ]}
             """;
@@ -112,7 +121,7 @@ class OrderControllerTest {
                 """.formatted(i));
             }
             String request = """
-            { "customerName":"Ais", "items":[%s] }
+            { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[%s] }
             """.formatted(items);
 
             mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isBadRequest());
@@ -121,7 +130,7 @@ class OrderControllerTest {
         @Test
         void shouldRejectUnitPriceWithTooManyDecimals() throws Exception {
             String request = """
-            { "customerName":"Ais", "items":[
+            { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[
                 {"productName":"Apple","quantity":2,"unitPrice":10000.555}
             ]}
             """;
@@ -132,7 +141,7 @@ class OrderControllerTest {
         @Test
         void shouldRejectNonIntegerQuantity() throws Exception {
             String request = """
-            { "customerName":"Ais", "items":[
+            { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[
                 {"productName":"Apple","quantity":2.5,"unitPrice":10000}
             ]}
             """;
@@ -143,7 +152,7 @@ class OrderControllerTest {
         @Test
         void shouldRejectEmptyCustomerName() throws Exception {
             String request = """
-            { "customerName":"", "items":[
+            { "customerName":"", "customer": {"customerName": "", "phoneNum": "123", "email": "a@b.c"}, "items":[
                 {"productName":"Apple","quantity":2,"unitPrice":10000}
             ]}
             """;
@@ -154,7 +163,7 @@ class OrderControllerTest {
         @Test
         void shouldRejectEmptyItemList() throws Exception {
             String request = """
-            { "customerName":"Ais", "items":[] }
+            { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[] }
             """;
 
             mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request))
@@ -164,7 +173,7 @@ class OrderControllerTest {
         @Test
         void shouldRejectNegativeQuantity() throws Exception {
             String request = """
-            { "customerName":"Ais", "items":[
+            { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[
                 {"productName":"Apple","quantity":-1,"unitPrice":10000}
             ]}
             """;
@@ -176,7 +185,7 @@ class OrderControllerTest {
         @Test
         void shouldRejectZeroQuantity() throws Exception {
             String request = """
-            { "customerName":"Ais", "items":[
+            { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[
                 {"productName":"Apple","quantity":0,"unitPrice":10000}
             ]}
             """;
@@ -187,7 +196,7 @@ class OrderControllerTest {
         @Test
         void shouldRejectNegativeUnitPrice() throws Exception {
             String request = """
-            { "customerName":"Ais", "items":[
+            { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[
                 {"productName":"Apple","quantity":2,"unitPrice":-100}
             ]}
             """;
@@ -198,7 +207,7 @@ class OrderControllerTest {
         @Test
         void shouldRejectUnitPriceWithAnyDecimal() throws Exception {
             String request = """
-                { "customerName":"Ais", "items":[
+                { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[
                     {"productName":"Apple","quantity":2,"unitPrice":10000.5}
                 ]}
                 """;
@@ -211,7 +220,7 @@ class OrderControllerTest {
             when(orderService.create(any(Order.class))).thenReturn(dummyOrder());
 
             String request = """
-                { "customerName":"Ais", "items":[
+                { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[
                     {"productName":"Apple","quantity":10000,"unitPrice":10000}
                 ]}
                 """;
@@ -231,7 +240,7 @@ class OrderControllerTest {
                     """.formatted(i));
                         }
                         String request = """
-                { "customerName":"Ais", "items":[%s] }
+                { "customerName":"Ais", "customer": {"customerName": "Ais", "phoneNum": "123", "email": "a@b.c"}, "items":[%s] }
                 """.formatted(items);
 
             mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isCreated());
@@ -268,14 +277,14 @@ class OrderControllerTest {
         void shouldReturnOrders() throws Exception {
             Page<Order> page = new PageImpl<>(List.of(dummyOrder()));
             when(orderService.getAll(any(Pageable.class), eq("newest"))).thenReturn(page);
-            mockMvc.perform(get("/orders")).andExpect(status().isOk()).andExpect(jsonPath("$.content").isArray()).andExpect(jsonPath("$.content.length()").value(1));
+            mockMvc.perform(get("/orders")).andExpect(status().isOk()).andExpect(jsonPath("$").isArray()).andExpect(jsonPath("$[0].orderId").exists());
         }
 
         @Test
         void shouldReturnEmptyList() throws Exception {
             Page<Order> page = new PageImpl<>(List.of());
             when(orderService.getAll(any(Pageable.class), eq("newest"))).thenReturn(page);
-            mockMvc.perform(get("/orders")).andExpect(status().isOk()).andExpect(jsonPath("$.content").isArray()).andExpect(jsonPath("$.content.length()").value(0));
+            mockMvc.perform(get("/orders")).andExpect(status().isOk()).andExpect(jsonPath("$").isArray()).andExpect(jsonPath("$.length()").value(0));
         }
     }
 
@@ -285,7 +294,7 @@ class OrderControllerTest {
         @Test
         void shouldUpdateOrder() throws Exception {
             UUID id = UUID.randomUUID();
-            when(orderService.update(eq(id), any(String.class), any(List.class))).thenReturn(Optional.of(dummyOrder()));
+            when(orderService.update(eq(id), any(com.admo.orderservice.entity.Customer.class), any(List.class))).thenReturn(Optional.of(dummyOrder()));
 
             mockMvc.perform(put("/orders/{id}", id).contentType(MediaType.APPLICATION_JSON)
                     .content(validOrderRequest())).andExpect(status().isOk());
@@ -294,11 +303,12 @@ class OrderControllerTest {
         @Test
         void shouldReturn404WhenUpdatingUnknownOrder() throws Exception {
             UUID id = UUID.randomUUID();
-            when(orderService.update(eq(id), any(String.class), any(List.class))).thenReturn(Optional.empty());
+            when(orderService.update(eq(id), any(com.admo.orderservice.entity.Customer.class), any(List.class))).thenReturn(Optional.empty());
 
             String request = """
                     {
                       "customerName":"Updated",
+                      "customer": {"customerName": "Updated", "phoneNum": "123", "email": "a@b.c"},
                       "items":[
                         {
                           "productName":"Apple",

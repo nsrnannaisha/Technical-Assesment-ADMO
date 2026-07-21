@@ -6,6 +6,8 @@ import com.admo.orderservice.entity.OrderStatus;
 import com.admo.orderservice.exception.OrderBusinessException;
 import com.admo.orderservice.exception.OrderNotFoundException;
 import com.admo.orderservice.repository.OrderRepository;
+import com.admo.orderservice.repository.CustomerRepository;
+import com.admo.orderservice.entity.Customer;
 
 import com.admo.orderservice.state.CancelledState;
 import com.admo.orderservice.state.PaidState;
@@ -25,21 +27,34 @@ import static org.mockito.Mockito.*;
 
 class OrderServiceTest {
     private OrderRepository repository;
+    private CustomerRepository customerRepository;
     private OrderService service;
     private Order order;
+
+    private Customer createCustomer(String name) {
+        Customer c = new Customer();
+        c.setCustomerName(name);
+        c.setEmail("a@b.c");
+        c.setPhoneNum("123");
+        return c;
+    }
 
     @BeforeEach
     void setUp() {
         repository = mock(OrderRepository.class);
-        service = new OrderServiceImpl(repository);
-        order = new Order("Ais", List.of(new LineItem("Apple", 2, new BigDecimal("10.000"))));
+        customerRepository = mock(CustomerRepository.class);
+        service = new OrderServiceImpl(repository, customerRepository);
+        order = new Order(createCustomer("Ais"), List.of(new LineItem("Apple", 2, new BigDecimal("10.000"))));
     }
 
     @Test
     void shouldCreateOrder() {
+        when(customerRepository.findById("Ais")).thenReturn(Optional.empty());
+        when(customerRepository.save(any(Customer.class))).thenAnswer(inv -> inv.getArgument(0));
         when(repository.save(order)).thenReturn(order);
         Order result = service.create(order);
         assertNotNull(result);
+        verify(customerRepository).save(any(Customer.class));
         verify(repository).save(order);
     }
 
@@ -78,6 +93,8 @@ class OrderServiceTest {
 
         List<LineItem> newItems = List.of(new LineItem("Mango", 3, new BigDecimal("5.000")));
 
+        when(customerRepository.findById("Updated Name")).thenReturn(Optional.of(createCustomer("Updated Name")));
+        when(customerRepository.save(any(Customer.class))).thenAnswer(inv -> inv.getArgument(0));
         Optional<Order> result = service.update(id, "Updated Name", newItems);
 
         assertTrue(result.isPresent());
@@ -93,6 +110,40 @@ class OrderServiceTest {
     }
 
     @Test
+    void shouldReuseExistingCustomerWhenCreatingOrder() {
+        Customer existing = createCustomer("Ais");
+        when(customerRepository.findById("Ais")).thenReturn(Optional.of(existing));
+        when(repository.save(order)).thenReturn(order);
+
+        Order result = service.create(order);
+
+        assertSame(existing, result.getCustomer());
+        verify(customerRepository, never()).save(any(Customer.class));
+        verify(repository).save(order);
+    }
+
+    @Test
+    void shouldNotMutateExistingCustomerWhenCreatingOrder() {
+        Customer existing = createCustomer("Ais");
+        existing.setEmail("original@example.com");
+        existing.setPhoneNum("111");
+        when(customerRepository.findById("Ais")).thenReturn(Optional.of(existing));
+        when(repository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Customer incoming = createCustomer("Ais");
+        incoming.setEmail("new@example.com");
+        incoming.setPhoneNum("222");
+        Order incomingOrder = new Order(incoming, List.of(new LineItem("Apple", 2, new BigDecimal("10.000"))));
+
+        Order result = service.create(incomingOrder);
+
+        assertSame(existing, result.getCustomer());
+        assertEquals("original@example.com", existing.getEmail());
+        assertEquals("111", existing.getPhoneNum());
+        verify(customerRepository, never()).save(any(Customer.class));
+    }
+
+    @Test
     void shouldReturnEmptyWhenUpdatingUnknownOrder() {
         UUID unknownId = UUID.randomUUID();
         when(repository.findById(unknownId)).thenReturn(Optional.empty());
@@ -105,8 +156,8 @@ class OrderServiceTest {
 
     @Test
     void shouldReturnPagedOrdersSortedByHighestTotal() {
-        Order low = new Order("A", List.of(new LineItem("Apple", 1, new BigDecimal("1000"))));
-        Order high = new Order("B", List.of(new LineItem("Apple", 1, new BigDecimal("5000"))));
+        Order low = new Order(createCustomer("A"), List.of(new LineItem("Apple", 1, new BigDecimal("1000"))));
+        Order high = new Order(createCustomer("B"), List.of(new LineItem("Apple", 1, new BigDecimal("5000"))));
 
         when(repository.findAll()).thenReturn(List.of(low, high));
 
@@ -118,9 +169,9 @@ class OrderServiceTest {
 
     @Test
     void shouldReturnRequestedPage() {
-        Order a = new Order("A", List.of(new LineItem("A",1,BigDecimal.ONE)));
-        Order b = new Order("B", List.of(new LineItem("B",1,BigDecimal.TEN)));
-        Order c = new Order("C", List.of(new LineItem("C",1,new BigDecimal("100"))));
+        Order a = new Order(createCustomer("A"), List.of(new LineItem("A",1,BigDecimal.ONE)));
+        Order b = new Order(createCustomer("B"), List.of(new LineItem("B",1,BigDecimal.TEN)));
+        Order c = new Order(createCustomer("C"), List.of(new LineItem("C",1,new BigDecimal("100"))));
 
         when(repository.findAll()).thenReturn(List.of(a,b,c));
         Page<Order> page = service.getAll(PageRequest.of(1,1),"highest_total");
@@ -184,6 +235,23 @@ class OrderServiceTest {
     void cancelledStateAcceptsReason() {
         CancelledState state = new CancelledState();
         assertDoesNotThrow(() -> state.validateTransitionData("Customer request"));
+    }
+
+    @Test
+    void updateShouldNotMutateCustomerWhenItemsBecomeInvalidOnPaidOrder() {
+        UUID id = order.getOrderId();
+        Customer existing = createCustomer("Ais");
+        Customer updatedCustomer = createCustomer("Updated Name");
+        order.changeStatus(OrderStatus.PAID, null);
+        order.assignCustomer(existing);
+        List<LineItem> newItems = List.of(new LineItem("Mango", 3, new BigDecimal("5.000")));
+
+        when(repository.findById(id)).thenReturn(Optional.of(order));
+        when(customerRepository.findById("Updated Name")).thenReturn(Optional.of(updatedCustomer));
+
+        assertThrows(OrderBusinessException.class, () -> service.update(id, "Updated Name", newItems));
+        assertSame(existing, order.getCustomer());
+        verify(repository, never()).save(any(Order.class));
     }
 
     @Test

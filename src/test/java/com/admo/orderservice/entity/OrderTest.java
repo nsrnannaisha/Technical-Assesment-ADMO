@@ -12,14 +12,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OrderTest {
 
+    private Customer createCustomer(String name) {
+        Customer c = new Customer();
+        c.setCustomerName(name);
+        c.setEmail("a@b.c");
+        c.setPhoneNum("123");
+        return c;
+    }
+
+
     private Order newOrder() {
-        return new Order("Ais", List.of(new LineItem("Apple", 3, BigDecimal.valueOf(5000))));
+        return new Order(createCustomer("Ais"), List.of(new LineItem("Apple", 3, BigDecimal.valueOf(5000))));
     }
 
     @Test
     void calculateTotalAmountForSingleItem() {
         LineItem apple = new LineItem("Apple", 2, new BigDecimal("10.000"));
-        Order order = new Order("Ais", List.of(apple));
+        Order order = new Order(createCustomer("Ais"), List.of(apple));
         assertEquals(new BigDecimal("20.000"), order.getTotalAmount());
     }
 
@@ -27,7 +36,7 @@ class OrderTest {
     void calculateTotalAmountForMultipleItem() {
         LineItem apple = new LineItem("Apple", 2, new BigDecimal("10.000"));
         LineItem mango = new LineItem("mango", 4, new BigDecimal("15.000"));
-        Order order = new Order("Ais", List.of(apple, mango));
+        Order order = new Order(createCustomer("Ais"), List.of(apple, mango));
         assertEquals(new BigDecimal("80.000"), order.getTotalAmount());
     }
 
@@ -89,7 +98,7 @@ class OrderTest {
     @Test
     void itemsCanBeChangedWhileCreated() {
         Order order = newOrder();
-        order.applyUpdate("Ais", List.of(new LineItem("Bread", 2, BigDecimal.valueOf(2000))));
+        order.applyUpdate(createCustomer("Ais"), List.of(new LineItem("Bread", 2, BigDecimal.valueOf(2000))));
 
         assertThat(order.getTotalAmount()).isEqualByComparingTo("4000");
     }
@@ -99,27 +108,27 @@ class OrderTest {
         Order order = newOrder();
         order.changeStatus(OrderStatus.PAID, null);
 
-        assertThatThrownBy(() -> order.applyUpdate("Ais", List.of(new LineItem("Bread", 5, BigDecimal.valueOf(2000))))).isInstanceOf(OrderBusinessException.class).hasMessageContaining("payment");
+        assertThatThrownBy(() -> order.applyUpdate(createCustomer("Ais"), List.of(new LineItem("Bread", 5, BigDecimal.valueOf(2000))))).isInstanceOf(OrderBusinessException.class).hasMessageContaining("payment");
     }
 
     @Test
     void resubmittingIdenticalItemsAfterPaidIsAllowed() {
         Order order = newOrder();
         order.changeStatus(OrderStatus.PAID, null);
-        order.applyUpdate("New Name", List.of(new LineItem("Apple", 3, BigDecimal.valueOf(5000))));
+        order.applyUpdate(createCustomer("New Name"), List.of(new LineItem("Apple", 3, BigDecimal.valueOf(5000))));
         assertThat(order.getCustomerName()).isEqualTo("New Name");
     }
 
     @Test
     void cancelOrder_withoutReason_throwsMissingTransitionData() {
-        Order order = new Order("Andi", List.of(new LineItem("Apple", 1, BigDecimal.ONE)));
+        Order order = new Order(createCustomer("Andi"), List.of(new LineItem("Apple", 1, BigDecimal.ONE)));
         assertThatThrownBy(() -> order.changeStatus(OrderStatus.CANCELLED, null)).isInstanceOf(OrderBusinessException.class)
                 .extracting(ex -> ((OrderBusinessException) ex).getCode()).isEqualTo("MISSING_TRANSITION_DATA");
     }
 
     @Test
     void shipOrder_withoutReason_doesNotRequireReason() {
-        Order order = new Order("Andi", List.of(new LineItem("Apple", 1, BigDecimal.ONE)));
+        Order order = new Order(createCustomer("Andi"), List.of(new LineItem("Apple", 1, BigDecimal.ONE)));
         order.changeStatus(OrderStatus.PAID, null);
         order.changeStatus(OrderStatus.SHIPPED, null);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.SHIPPED);

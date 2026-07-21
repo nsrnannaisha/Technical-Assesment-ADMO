@@ -23,8 +23,9 @@ public class Order {
     @Column(nullable = false, updatable = false)
     private UUID orderId;
 
-    @Column(nullable = false)
-    private String customerName;
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "customer_name", referencedColumnName = "customerName", nullable = false)
+    private Customer customer;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "order_items", joinColumns = @JoinColumn(name = "order_id"))
@@ -47,14 +48,18 @@ public class Order {
     @Column
     private String cancellationReason;
 
-    public Order(String customerName, List<LineItem> items) {
+    public Order(Customer customer, List<LineItem> items) {
         this.orderId = UUID.randomUUID();
-        this.customerName = customerName;
+        this.customer = customer;
         this.items = new ArrayList<>(items);
         this.status = OrderStatus.CREATED;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         this.totalAmount = calculateTotalAmount();
+    }
+
+    public void assignCustomer(Customer customer) {
+        this.customer = customer;
     }
 
     private BigDecimal calculateTotalAmount() {
@@ -65,8 +70,7 @@ public class Order {
         return items.stream().map(LineItem::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public void applyUpdate(String customerName, List<LineItem> items) {
-        this.customerName = customerName;
+    public void applyUpdate(Customer customer, List<LineItem> items) {
         boolean itemsChanged = !this.items.equals(items);
 
         if (status != OrderStatus.CREATED && itemsChanged) {
@@ -75,6 +79,8 @@ public class Order {
                     "Line items cannot be modified after payment"
             );
         }
+
+        this.customer = customer;
 
         if (status == OrderStatus.CREATED) {
             this.items.clear();
@@ -99,5 +105,9 @@ public class Order {
         }
 
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public String getCustomerName() {
+        return customer != null ? customer.getCustomerName() : null;
     }
 }
