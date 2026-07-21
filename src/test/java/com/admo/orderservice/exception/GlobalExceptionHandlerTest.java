@@ -78,12 +78,15 @@ class GlobalExceptionHandlerTest {
         void shouldReturnConsistentBodyWhenOrderNotFoundOnUpdate() throws Exception {
             UUID id = UUID.randomUUID();
             when(orderService.update(org.mockito.ArgumentMatchers.eq(id),
-                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.any(com.admo.orderservice.entity.Customer.class),
                     org.mockito.ArgumentMatchers.anyList()))
                     .thenReturn(Optional.empty());
 
             String request = """
-                    { "customerName":"Updated", "items":[
+                    { "customerName":"Updated", "customer": {
+                        "phoneNum":"123",
+                        "email":"a@b.c"
+                    }, "items":[
                         {"productName":"Apple","quantity":2,"unitPrice":10000}
                     ]}
                     """;

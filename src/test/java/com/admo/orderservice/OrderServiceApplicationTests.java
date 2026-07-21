@@ -12,6 +12,16 @@ class OrderServiceApplicationTests {
 
     @Test
     void mainRuns() {
-        OrderServiceApplication.main(new String[]{});
+        String previous = System.getProperty("server.port");
+        System.setProperty("server.port", "0");
+        try {
+            OrderServiceApplication.main(new String[]{});
+        } finally {
+            if (previous == null) {
+                System.clearProperty("server.port");
+            } else {
+                System.setProperty("server.port", previous);
+            }
+        }
     }
 }
