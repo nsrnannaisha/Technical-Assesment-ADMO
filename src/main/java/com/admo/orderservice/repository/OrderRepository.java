@@ -6,6 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.UUID;
 
 public interface OrderRepository extends JpaRepository<Order, UUID> {
-    boolean existsByCustomerCustomerName(String customerName);
-    boolean existsByCustomerCustomerNameAndOrderIdNot(String customerName, UUID orderId);
+    void deleteByCustomerCustomerName(String customerName);
 }
