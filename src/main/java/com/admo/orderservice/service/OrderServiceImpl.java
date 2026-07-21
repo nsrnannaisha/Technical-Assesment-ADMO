@@ -100,10 +100,6 @@ public class OrderServiceImpl implements OrderService {
             return null;
         }
         return customerRepository.findById(customer.getCustomerName())
-                .map(existing -> {
-                    existing.setEmail(customer.getEmail());
-                    existing.setPhoneNum(customer.getPhoneNum());
-                    return customerRepository.save(existing);
-                }).orElseGet(() -> customerRepository.save(customer));
+                .orElseGet(() -> customerRepository.save(customer));
     }
 }

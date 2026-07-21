@@ -73,7 +73,12 @@ public class CustomerServiceImpl implements CustomerService {
             throw new OrderBusinessException("CUSTOMER_NOT_FOUND", "Customer not found");
         }
 
-        orderRepository.deleteByCustomerCustomerName(customerName);
+        boolean hasOrders = orderRepository.findAll().stream()
+                .anyMatch(order -> order.getCustomer() != null && customerName.equals(order.getCustomerName()));
+        if (hasOrders) {
+            throw new OrderBusinessException("CUSTOMER_HAS_ORDERS", "Customer cannot be deleted while orders still exist");
+        }
+
         customerRepository.deleteById(customerName);
     }
 

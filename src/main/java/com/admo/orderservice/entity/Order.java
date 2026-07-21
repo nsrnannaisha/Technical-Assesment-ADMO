@@ -71,7 +71,6 @@ public class Order {
     }
 
     public void applyUpdate(Customer customer, List<LineItem> items) {
-        this.customer = customer;
         boolean itemsChanged = !this.items.equals(items);
 
         if (status != OrderStatus.CREATED && itemsChanged) {
@@ -80,6 +79,8 @@ public class Order {
                     "Line items cannot be modified after payment"
             );
         }
+
+        this.customer = customer;
 
         if (status == OrderStatus.CREATED) {
             this.items.clear();
