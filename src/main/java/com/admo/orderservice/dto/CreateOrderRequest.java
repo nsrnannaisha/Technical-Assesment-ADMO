@@ -13,12 +13,12 @@ import java.util.List;
 @NoArgsConstructor
 public class CreateOrderRequest {
 
-    @NotBlank
     @Size(min = 1, max = 255)
     private String customerName;
 
     @Valid
-    @NotEmpty
+    private CustomerRequest customer;
+
     @Size(max = 100)
     private List<LineItemRequest> items;
 }

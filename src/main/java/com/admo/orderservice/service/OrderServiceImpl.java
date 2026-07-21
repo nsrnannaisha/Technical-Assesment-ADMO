@@ -4,8 +4,11 @@ import com.admo.orderservice.entity.LineItem;
 import com.admo.orderservice.entity.Order;
 import com.admo.orderservice.entity.OrderStatus;
 import com.admo.orderservice.entity.OrderSortKey;
+import com.admo.orderservice.entity.Customer;
 import com.admo.orderservice.exception.OrderNotFoundException;
+import com.admo.orderservice.exception.OrderBusinessException;
 import com.admo.orderservice.repository.OrderRepository;
+import com.admo.orderservice.repository.CustomerRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,13 +25,17 @@ import java.util.Comparator;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository repository;
+    private final CustomerRepository customerRepository;
 
-    public OrderServiceImpl(OrderRepository repository) {
+    public OrderServiceImpl(OrderRepository repository, CustomerRepository customerRepository) {
         this.repository = repository;
+        this.customerRepository = customerRepository;
     }
 
     @Override
     public Order create(Order order) {
+        ensureCustomerNameUnique(order.getCustomerName(), null);
+        order.assignCustomer(resolveCustomer(order.getCustomer()));
         return repository.save(order);
     }
 
@@ -44,9 +51,21 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
+    public Optional<Order> update(UUID id, Customer customer, List<LineItem> items) {
+        return repository.findById(id).map(order -> {
+            ensureCustomerNameUnique(customer != null ? customer.getCustomerName() : null, order.getOrderId());
+            order.applyUpdate(resolveCustomer(customer), items);
+            return repository.save(order);
+        });
+    }
+
+    @Override
+    @Transactional
     public Optional<Order> update(UUID id, String customerName, List<LineItem> items) {
         return repository.findById(id).map(order -> {
-            order.applyUpdate(customerName, items);
+            ensureCustomerNameUnique(customerName, order.getOrderId());
+            Customer existingCustomer = customerRepository.findById(customerName).orElseThrow(() -> new OrderBusinessException("CUSTOMER_NOT_FOUND", "Customer not found"));
+            order.applyUpdate(existingCustomer, items);
             return repository.save(order);
         });
     }
@@ -77,5 +96,28 @@ public class OrderServiceImpl implements OrderService {
         int to = Math.min(from + pageable.getPageSize(), sorted.size());
 
         return new PageImpl<>(sorted.subList(from, to), pageable, sorted.size());
+    }
+
+    private Customer resolveCustomer(Customer customer) {
+        if (customer == null) {
+            return null;
+        }
+        return customerRepository.findById(customer.getCustomerName())
+                .map(existing -> {
+                    existing.setEmail(customer.getEmail());
+                    existing.setPhoneNum(customer.getPhoneNum());
+                    return customerRepository.save(existing);
+                }).orElseGet(() -> customerRepository.save(customer));
+    }
+    private void ensureCustomerNameUnique(String customerName, UUID currentOrderId) {
+        if (customerName == null || customerName.isBlank()) {
+            return;
+        }
+        boolean exists = currentOrderId == null
+                ? repository.existsByCustomerCustomerName(customerName)
+                : repository.existsByCustomerCustomerNameAndOrderIdNot(customerName, currentOrderId);
+        if (exists) {
+            throw new OrderBusinessException("CUSTOMER_NAME_ALREADY_USED", "Customer name already used");
+        }
     }
 }
