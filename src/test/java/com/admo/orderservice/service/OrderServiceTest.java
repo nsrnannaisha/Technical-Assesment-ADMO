@@ -6,6 +6,8 @@ import com.admo.orderservice.entity.OrderStatus;
 import com.admo.orderservice.exception.OrderBusinessException;
 import com.admo.orderservice.exception.OrderNotFoundException;
 import com.admo.orderservice.repository.OrderRepository;
+import com.admo.orderservice.repository.CustomerRepository;
+import com.admo.orderservice.entity.Customer;
 
 import com.admo.orderservice.state.CancelledState;
 import com.admo.orderservice.state.PaidState;
@@ -25,21 +27,34 @@ import static org.mockito.Mockito.*;
 
 class OrderServiceTest {
     private OrderRepository repository;
+    private CustomerRepository customerRepository;
     private OrderService service;
     private Order order;
+
+    private Customer createCustomer(String name) {
+        Customer c = new Customer();
+        c.setCustomerName(name);
+        c.setEmail("a@b.c");
+        c.setPhoneNum("123");
+        return c;
+    }
 
     @BeforeEach
     void setUp() {
         repository = mock(OrderRepository.class);
-        service = new OrderServiceImpl(repository);
-        order = new Order("Ais", List.of(new LineItem("Apple", 2, new BigDecimal("10.000"))));
+        customerRepository = mock(CustomerRepository.class);
+        service = new OrderServiceImpl(repository, customerRepository);
+        order = new Order(createCustomer("Ais"), List.of(new LineItem("Apple", 2, new BigDecimal("10.000"))));
     }
 
     @Test
     void shouldCreateOrder() {
+        when(customerRepository.findById("Ais")).thenReturn(Optional.empty());
+        when(customerRepository.save(any(Customer.class))).thenAnswer(inv -> inv.getArgument(0));
         when(repository.save(order)).thenReturn(order);
         Order result = service.create(order);
         assertNotNull(result);
+        verify(customerRepository).save(any(Customer.class));
         verify(repository).save(order);
     }
 
@@ -78,6 +93,8 @@ class OrderServiceTest {
 
         List<LineItem> newItems = List.of(new LineItem("Mango", 3, new BigDecimal("5.000")));
 
+        when(customerRepository.findById("Updated Name")).thenReturn(Optional.of(createCustomer("Updated Name")));
+        when(customerRepository.save(any(Customer.class))).thenAnswer(inv -> inv.getArgument(0));
         Optional<Order> result = service.update(id, "Updated Name", newItems);
 
         assertTrue(result.isPresent());
@@ -89,6 +106,20 @@ class OrderServiceTest {
         assertEquals("Updated Name", updated.getCustomerName());
         assertEquals(new BigDecimal("15.000"), updated.getTotalAmount());
 
+        verify(repository).save(order);
+    }
+
+    @Test
+    void shouldReuseExistingCustomerWhenCreatingOrder() {
+        Customer existing = createCustomer("Ais");
+        when(customerRepository.findById("Ais")).thenReturn(Optional.of(existing));
+        when(customerRepository.save(any(Customer.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(repository.save(order)).thenReturn(order);
+
+        Order result = service.create(order);
+
+        assertSame(existing, result.getCustomer());
+        verify(customerRepository).save(existing);
         verify(repository).save(order);
     }
 
@@ -105,8 +136,8 @@ class OrderServiceTest {
 
     @Test
     void shouldReturnPagedOrdersSortedByHighestTotal() {
-        Order low = new Order("A", List.of(new LineItem("Apple", 1, new BigDecimal("1000"))));
-        Order high = new Order("B", List.of(new LineItem("Apple", 1, new BigDecimal("5000"))));
+        Order low = new Order(createCustomer("A"), List.of(new LineItem("Apple", 1, new BigDecimal("1000"))));
+        Order high = new Order(createCustomer("B"), List.of(new LineItem("Apple", 1, new BigDecimal("5000"))));
 
         when(repository.findAll()).thenReturn(List.of(low, high));
 
@@ -118,9 +149,9 @@ class OrderServiceTest {
 
     @Test
     void shouldReturnRequestedPage() {
-        Order a = new Order("A", List.of(new LineItem("A",1,BigDecimal.ONE)));
-        Order b = new Order("B", List.of(new LineItem("B",1,BigDecimal.TEN)));
-        Order c = new Order("C", List.of(new LineItem("C",1,new BigDecimal("100"))));
+        Order a = new Order(createCustomer("A"), List.of(new LineItem("A",1,BigDecimal.ONE)));
+        Order b = new Order(createCustomer("B"), List.of(new LineItem("B",1,BigDecimal.TEN)));
+        Order c = new Order(createCustomer("C"), List.of(new LineItem("C",1,new BigDecimal("100"))));
 
         when(repository.findAll()).thenReturn(List.of(a,b,c));
         Page<Order> page = service.getAll(PageRequest.of(1,1),"highest_total");

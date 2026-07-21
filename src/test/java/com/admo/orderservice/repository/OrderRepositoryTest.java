@@ -15,6 +15,15 @@ import static org.junit.jupiter.api.Assertions.*;
 @DataJpaTest
 class OrderRepositoryTest {
 
+    private com.admo.orderservice.entity.Customer createCustomer(String name) {
+        com.admo.orderservice.entity.Customer c = new com.admo.orderservice.entity.Customer();
+        c.setCustomerName(name);
+        c.setEmail("a@b.c");
+        c.setPhoneNum("123");
+        return c;
+    }
+
+
     @Autowired
     OrderRepository repository;
 
@@ -23,7 +32,7 @@ class OrderRepositoryTest {
 
     @Test
     void shouldSaveOrder() {
-        Order order = new Order("Ais", List.of(new LineItem("Apple", 2, new BigDecimal("10000"))));
+        Order order = new Order(createCustomer("Ais"), List.of(new LineItem("Apple", 2, new BigDecimal("10000"))));
         Order saved = repository.save(order);
 
         assertNotNull(saved.getOrderId());
@@ -33,7 +42,7 @@ class OrderRepositoryTest {
 
     @Test
     void shouldFindOrderById() {
-        Order order = repository.save(new Order("Ais",
+        Order order = repository.save(new Order(createCustomer("Ais"),
                 List.of(new LineItem("Apple", 2, new BigDecimal("10000"))))
         );
 
@@ -42,7 +51,7 @@ class OrderRepositoryTest {
 
     @Test
     void shouldDeleteOrder() {
-        Order order = repository.save(new Order("Ais",
+        Order order = repository.save(new Order(createCustomer("Ais"),
                 List.of(new LineItem("Apple", 2, new BigDecimal("10000"))))
         );
 
@@ -52,10 +61,10 @@ class OrderRepositoryTest {
 
     @Test
     void shouldUpdateOrderItemsWithoutError() {
-        Order order = repository.save(new Order("Ais",
+        Order order = repository.save(new Order(createCustomer("Ais"),
                 List.of(new LineItem("Apple", 2, new BigDecimal("10000")))));
 
-        order.applyUpdate("Budi", List.of(new LineItem("Bread", 1, new BigDecimal("2000"))));
+        order.applyUpdate(createCustomer("Budi"), List.of(new LineItem("Bread", 1, new BigDecimal("2000"))));
         Order updated = repository.saveAndFlush(order);
 
         assertEquals("Budi", updated.getCustomerName());
@@ -65,7 +74,7 @@ class OrderRepositoryTest {
 
     @Test
     void items_preserveInsertionOrder_afterPersistAndReload() {
-        Order order = new Order("Andi", List.of(new LineItem("Apple", 3, new BigDecimal("5000")), new LineItem("Bread Loaf", 1, new BigDecimal("2.20"))));
+        Order order = new Order(createCustomer("Andi"), List.of(new LineItem("Apple", 3, new BigDecimal("5000")), new LineItem("Bread Loaf", 1, new BigDecimal("2.20"))));
         repository.saveAndFlush(order);
         em.clear();
 
