@@ -46,6 +46,10 @@ curl -X POST http://localhost:8080/orders \
   -H "Content-Type: application/json" \
   -d '{
     "customerName": "Andi Wijaya",
+    "customer": {
+      "email": "andi@example.com",
+      "phoneNum": "08123456789"
+    },
     "items": [
       { "productName": "Apple", "quantity": 3, "unitPrice": 5000 },
       { "productName": "Bread Loaf", "quantity": 1, "unitPrice": 2000 }
@@ -53,6 +57,7 @@ curl -X POST http://localhost:8080/orders \
   }'
 ```
 Returns `201 Created` with a server-assigned `orderId`, `status: "CREATED"`, and a computed `totalAmount` of `17000`.
+The order payload includes an embedded `customer` object for contact details only. The customer identity stays in the root `customerName`.
 
 ### Read Order
 #### Single order
@@ -77,7 +82,11 @@ An unknown `sort` value returns `400 Bad Request` (`INVALID_SORT_KEY`).
 curl -X PUT http://localhost:8080/orders/{id} \
   -H "Content-Type: application/json" \
   -d '{
-    "customerName": "Andi W.",
+    "customerName": "Andi Wijaya",
+    "customer": {
+      "email": "andi.new@example.com",
+      "phoneNum": "08129998877"
+    },
     "items": [
       { "productName": "Apple", "quantity": 5, "unitPrice": 5000 }
     ]
@@ -85,6 +94,7 @@ curl -X PUT http://localhost:8080/orders/{id} \
 ```
 - `404` if the order doesn't exist.
 - `409 Conflict` (`ITEMS_IMMUTABLE`) if the order is already `PAID` or later and the `items` list is changed. `customerName` may still be updated at any stage.
+- If `customer` is provided, the embedded contact details are created or updated together with the order.
 
 ### Change order status
 ```bash
@@ -121,6 +131,11 @@ curl -X POST http://localhost:8080/customers \
   }'
 ```
 Returns `201 Created` with the stored customer data.
+
+This follows the current `CustomerDto` shape:
+- `customerName`
+- `email`
+- `phoneNum`
 
 ### Read customer
 #### Single customer

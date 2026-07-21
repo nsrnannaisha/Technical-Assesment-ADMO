@@ -23,7 +23,8 @@ public class OrderRequest {
     private String customerName;
 
     @Valid
-    private CustomerDto customer;
+    @NotNull
+    private Customer customer;
 
     @Valid
     @NotEmpty
@@ -44,5 +45,17 @@ public class OrderRequest {
         @Positive
         @Digits(integer = 17, fraction = 0, message = "unitPrice must be a whole number (IDR)")
         private BigDecimal unitPrice;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    public static class Customer {
+        @NotBlank
+        @Size(min = 1, max = 255)
+        private String email;
+
+        @NotBlank
+        @Size(min = 1, max = 50)
+        private String phoneNum;
     }
 }
