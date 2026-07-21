@@ -2,12 +2,14 @@ package com.admo.orderservice.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class CustomerUpdateRequest {
+@AllArgsConstructor
+public class CustomerDto {
     @NotBlank
     @Size(min = 1, max = 255)
     private String customerName;

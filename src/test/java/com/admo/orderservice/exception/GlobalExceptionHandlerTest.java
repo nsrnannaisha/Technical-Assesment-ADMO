@@ -84,6 +84,7 @@ class GlobalExceptionHandlerTest {
 
             String request = """
                     { "customerName":"Updated", "customer": {
+                        "customerName":"Updated",
                         "phoneNum":"123",
                         "email":"a@b.c"
                     }, "items":[

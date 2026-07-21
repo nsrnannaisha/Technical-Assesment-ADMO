@@ -1,11 +1,11 @@
 package com.admo.orderservice.controller;
 
-import com.admo.orderservice.dto.CreateOrderRequest;
-import com.admo.orderservice.dto.OrderResponse;
+import com.admo.orderservice.dto.OrderDto;
+import com.admo.orderservice.dto.OrderRequest;
 import com.admo.orderservice.dto.StatusTransitionRequest;
-import com.admo.orderservice.dto.UpdateOrderRequest;
 import com.admo.orderservice.entity.Order;
 import com.admo.orderservice.entity.Customer;
+import com.admo.orderservice.exception.OrderBusinessException;
 import com.admo.orderservice.exception.OrderNotFoundException;
 import com.admo.orderservice.mapper.OrderMapper;
 import com.admo.orderservice.service.OrderService;
@@ -33,8 +33,11 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<OrderResponse> create(
-            @Valid @RequestBody CreateOrderRequest request) {
+    public ResponseEntity<OrderDto> create(
+            @Valid @RequestBody OrderRequest request) {
+        if (request.getCustomer() == null) {
+            throw new OrderBusinessException("VALIDATION_ERROR", "Customer is required");
+        }
 
         Order order = service.create(OrderMapper.toEntity(request));
 
@@ -42,21 +45,21 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<OrderResponse> getById(@PathVariable UUID id) {
+    public ResponseEntity<OrderDto> getById(@PathVariable UUID id) {
         Order order = service.getById(id).orElseThrow(() -> new OrderNotFoundException(id));
 
         return ResponseEntity.ok(OrderMapper.toResponse(order));
     }
 
     @GetMapping
-    public ResponseEntity<List<OrderResponse>> getAll(@RequestParam(defaultValue = "newest") String sort, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+    public ResponseEntity<List<OrderDto>> getAll(@RequestParam(defaultValue = "newest") String sort, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        List<OrderResponse> result = service.getAll(pageable, sort).map(OrderMapper::toResponse).getContent();
+        List<OrderDto> result = service.getAll(pageable, sort).map(OrderMapper::toResponse).getContent();
         return ResponseEntity.ok(result);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OrderResponse> update(@PathVariable UUID id, @Valid @RequestBody UpdateOrderRequest request) {
+    public ResponseEntity<OrderDto> update(@PathVariable UUID id, @Valid @RequestBody OrderRequest request) {
         Order updated;
         if (request.getCustomer() != null) {
             Customer customer = OrderMapper.toCustomer(request.getCustomerName(), request.getCustomer());
@@ -78,7 +81,7 @@ public class OrderController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<OrderResponse> changeStatus(@PathVariable UUID id, @Valid @RequestBody StatusTransitionRequest request) {
+    public ResponseEntity<OrderDto> changeStatus(@PathVariable UUID id, @Valid @RequestBody StatusTransitionRequest request) {
         Order updated = service.changeStatus(id, request.getStatus(), request.getReason());
         return ResponseEntity.ok(OrderMapper.toResponse(updated));
     }
