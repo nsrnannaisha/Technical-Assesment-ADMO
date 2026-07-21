@@ -106,6 +106,61 @@ curl -X DELETE http://localhost:8080/orders/{id}
 ```
 Returns `204 No Content` or `404` if the order doesn't exist.
 
+## Customer Service
+
+Base URL: `http://localhost:8080/customers`
+
+### Create a customer
+```bash
+curl -X POST http://localhost:8080/customers \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerName": "Ais",
+    "email": "ais@example.com",
+    "phoneNum": "08123456789"
+  }'
+```
+Returns `201 Created` with the stored customer data.
+
+### Read customer
+#### Single customer
+```bash
+curl http://localhost:8080/customers/{customerName}
+```
+- If the username contains spaces, replace them with %20.
+Returns `404 Not Found` if the customer does not exist.
+
+#### All customers
+```bash
+curl http://localhost:8080/customers
+```
+Returns a list of all customers.
+
+### Update a customer
+```bash
+curl -X PUT http://localhost:8080/customers/{customerName} \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerName": "Ais Baru",
+    "email": "aisbaru@example.com",
+    "phoneNum": "08129998877"
+  }'
+```
+Behavior:
+- If only `email` or `phoneNum` changes, the existing customer is updated in place.
+- If `customerName` changes, the old customer record is replaced and related orders are moved to the new customer.
+- `404` is returned if the customer does not exist.
+- `409 Conflict` (`CUSTOMER_NAME_ALREADY_USED`) is returned if the new name is already taken.
+
+### Delete a customer
+```bash
+curl -X DELETE http://localhost:8080/customers/{customerName}
+```
+Behavior:
+- Returns `204 No Content` when the customer is deleted successfully.
+- Returns `404` if the customer does not exist.
+- Returns `409 Conflict` (`CUSTOMER_HAS_ORDERS`) if the customer still has associated orders.
+
 ### Error response format
 All errors share a consistent shape:
 ```json
@@ -120,20 +175,8 @@ All errors share a consistent shape:
 ```
 `details` is omitted (`null`) for errors that aren't field-level, e.g. `ORDER_NOT_FOUND` or `ILLEGAL_STATUS_TRANSITION`.
 
-| HTTP Status | Code ->  When                                                                               |
-|-------------|---------------------------------------------------------------------------------------------|
-| 400         | `VALIDATION_ERROR` -> Bean Validation failure on request body                               |
-| 400         | `INVALID_PARAMETER` -> Path/query parameter has the wrong type (e.g. non-UUID id)           |
-| 400         | `MALFORMED_REQUEST` -> Request body isn't valid JSON                                        |
-| 400         | `MISSING_TRANSITION_DATA` -> A status transition is missing required data                   |
-| 400         | `INVALID_SORT_KEY` -> Unknown value for the `sort` query parameter                          |
-| 404         | `ORDER_NOT_FOUND` -> No order with the given ID                                             |
-| 409         | `ILLEGAL_STATUS_TRANSITION` -> Requested status change isn't allowed from the current state |
-| 409         | `ITEMS_IMMUTABLE` -> Attempt to modify line items after the order has been paid             |
-| 500         | `INTERNAL_ERROR` -> Unexpected server error (generic message; no internal details leaked)   |
-
 ### Assumptions
-- `customerName` stays editable at any status; only line items become immutable after payment.
+- 'customerName' is unique, stays editable at any status and only line items become immutable after payment.
 - Currency is Indonesian Rupiah (IDR), implicitly. No currency field is stored or accepted, since the spec's reference payloads never include one. Because IDR has no commonly used fractional denomination, `unitPrice` is validated as a whole number rather than the ≤2-decimal rule typical for currencies like USD.
 - Amounts aren't rounded. `BigDecimal` throughout.
 - Delete is a hard delete.
